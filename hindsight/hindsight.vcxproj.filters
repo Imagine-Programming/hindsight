@@ -1,0 +1,187 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Process">
+      <UniqueIdentifier>{29309694-cd69-4909-8dda-2604019ee5dc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Process">
+      <UniqueIdentifier>{a55b635a-939d-4b5a-8053-79363cb1dd23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Utilities">
+      <UniqueIdentifier>{2569df5b-8d20-4581-89c6-ae0764f07004}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Utilities">
+      <UniqueIdentifier>{09926dce-a07a-4c66-abff-dd15d27a29a4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Exceptions">
+      <UniqueIdentifier>{c4744218-6326-4f50-991f-fedcc28a8a09}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Debugger">
+      <UniqueIdentifier>{88b776c9-57a4-4441-8f87-a6fa09452242}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Debugger">
+      <UniqueIdentifier>{08e3d580-a244-48fc-ab85-eed8c491c6a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Debugger\EventHandler">
+      <UniqueIdentifier>{1598da56-2c37-4a67-ada8-4438e0022633}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Debugger\EventHandler">
+      <UniqueIdentifier>{586d44a9-4a87-4d59-b62a-2b198dde5249}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\BinaryLog">
+      <UniqueIdentifier>{1aa2a0ae-1579-4d72-bc34-6f4d58dbc1c0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\BinaryLog">
+      <UniqueIdentifier>{d0598cec-c0d0-47e4-8510-c79e34bf21ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\CliValidators">
+      <UniqueIdentifier>{dd4f87d3-4c60-4f26-9f07-fd74b4820de0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\CliValidators">
+      <UniqueIdentifier>{12e8e4d9-768e-477f-827d-cbc95be4771d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Checksum">
+      <UniqueIdentifier>{8b03171a-6096-4e3c-80ad-5134500a0b7e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="hindsight.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Launcher.cpp">
+      <Filter>Source Files\Process</Filter>
+    </ClCompile>
+    <ClCompile Include="String.cpp">
+      <Filter>Source Files\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Process.cpp">
+      <Filter>Source Files\Process</Filter>
+    </ClCompile>
+    <ClCompile Include="Error.cpp">
+      <Filter>Source Files\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Path.cpp">
+      <Filter>Source Files\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Debugger.cpp">
+      <Filter>Source Files\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="ModuleCollection.cpp">
+      <Filter>Source Files\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugContext.cpp">
+      <Filter>Source Files\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugStackTrace.cpp">
+      <Filter>Source Files\Debugger</Filter>
+    </ClCompile>
+    <ClCompile Include="PrintingDebuggerEventHandler.cpp">
+      <Filter>Source Files\Debugger\EventHandler</Filter>
+    </ClCompile>
+    <ClCompile Include="WriterDebuggerEventHandler.cpp">
+      <Filter>Source Files\Debugger\EventHandler</Filter>
+    </ClCompile>
+    <ClCompile Include="BinaryLogFile.cpp">
+      <Filter>Source Files\BinaryLog</Filter>
+    </ClCompile>
+    <ClCompile Include="BinaryLogPlayer.cpp">
+      <Filter>Source Files\BinaryLog</Filter>
+    </ClCompile>
+    <ClCompile Include="EventFilterValidator.cpp">
+      <Filter>Source Files\CliValidators</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CLI11.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rang.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Launcher.hpp">
+      <Filter>Header Files\Process</Filter>
+    </ClInclude>
+    <ClInclude Include="Process.hpp">
+      <Filter>Header Files\Process</Filter>
+    </ClInclude>
+    <ClInclude Include="String.hpp">
+      <Filter>Header Files\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Error.hpp">
+      <Filter>Header Files\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="LauncherExceptions.hpp">
+      <Filter>Header Files\Exceptions</Filter>
+    </ClInclude>
+    <ClInclude Include="Path.hpp">
+      <Filter>Header Files\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Debugger.hpp">
+      <Filter>Header Files\Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="DebuggerExceptions.hpp">
+      <Filter>Header Files\Exceptions</Filter>
+    </ClInclude>
+    <ClInclude Include="ModuleCollection.hpp">
+      <Filter>Header Files\Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugContext.hpp">
+      <Filter>Header Files\Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugStackTrace.hpp">
+      <Filter>Header Files\Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="State.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PrintingDebuggerEventHandler.hpp">
+      <Filter>Header Files\Debugger\EventHandler</Filter>
+    </ClInclude>
+    <ClInclude Include="IDebuggerEventHandler.hpp">
+      <Filter>Header Files\Debugger\EventHandler</Filter>
+    </ClInclude>
+    <ClInclude Include="WriterDebuggerEventHandler.hpp">
+      <Filter>Header Files\Debugger\EventHandler</Filter>
+    </ClInclude>
+    <ClInclude Include="BinaryLogFile.hpp">
+      <Filter>Header Files\BinaryLog</Filter>
+    </ClInclude>
+    <ClInclude Include="Version.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BinaryLogPlayer.hpp">
+      <Filter>Header Files\BinaryLog</Filter>
+    </ClInclude>
+    <ClInclude Include="EventFilterValidator.hpp">
+      <Filter>Header Files\CliValidators</Filter>
+    </ClInclude>
+    <ClInclude Include="crc32.hpp">
+      <Filter>Header Files\Checksum</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="hindsight.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\logo\hindsight.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+</Project>
