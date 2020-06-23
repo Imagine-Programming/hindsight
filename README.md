@@ -1,4 +1,5 @@
-<p align="center">![Hindsight Logo](./logo/sizes/hindsight.256x256.png)</p>
+<p align="center"><img src="./logo/sizes/hindsight.256x256.png" alt="hindsight logo" /></p>
+
 # hindsight
 A debugger with a postmortem (JIT) mode for Windows that can be used in conjunction with debug symbol files (.pdb) on Windows to record and investigate exceptions and crashes in already published software.
 
