@@ -55,28 +55,6 @@ std::string String::ReplaceAll(const std::string& str, const std::string& from, 
 /// <param name="from">The string to find.</param>
 /// <param name="to">The string to replace the found occurrence with.</param>
 /// <returns>The resulting string.</returns>
-std::string String::Replace(const std::string& str, const std::string&& from, const std::string&& to) {
-	return Replace(str, from, to);
-}
-
-/// <summary>
-/// Replaces all occurrences of <paramref name="from"/> to <paramref name="to"/> in <paramref name="str"/> and produce a new string.
-/// </summary>
-/// <param name="str">The string to search in.</param>
-/// <param name="from">The string to find.</param>
-/// <param name="to">The string to replace the found occurrence with.</param>
-/// <returns>The resulting string.</returns>
-std::string String::ReplaceAll(const std::string& str, const std::string&& from, const std::string&& to) {
-	return ReplaceAll(str, from, to);
-}
-
-/// <summary>
-/// Replaces the first occurrence of <paramref name="from"/> to <paramref name="to"/> in <paramref name="str"/> and produce a new string.
-/// </summary>
-/// <param name="str">The string to search in.</param>
-/// <param name="from">The string to find.</param>
-/// <param name="to">The string to replace the found occurrence with.</param>
-/// <returns>The resulting string.</returns>
 std::wstring String::Replace(const std::wstring& str, const std::wstring& from, const std::wstring& to) {
 	auto result    = str;
 	auto start_pos = result.find(from);
@@ -111,28 +89,6 @@ std::wstring String::ReplaceAll(const std::wstring& str, const std::wstring& fro
 }
 
 /// <summary>
-/// Replaces the first occurrence of <paramref name="from"/> to <paramref name="to"/> in <paramref name="str"/> and produce a new string.
-/// </summary>
-/// <param name="str">The string to search in.</param>
-/// <param name="from">The string to find.</param>
-/// <param name="to">The string to replace the found occurrence with.</param>
-/// <returns>The resulting string.</returns>
-std::wstring String::Replace(const std::wstring& str, const std::wstring&& from, const std::wstring&& to) {
-	return Replace(str, from, to);
-}
-
-/// <summary>
-/// Replaces all occurrences of <paramref name="from"/> to <paramref name="to"/> in <paramref name="str"/> and produce a new string.
-/// </summary>
-/// <param name="str">The string to search in.</param>
-/// <param name="from">The string to find.</param>
-/// <param name="to">The string to replace the found occurrence with.</param>
-/// <returns>The resulting string.</returns>
-std::wstring String::ReplaceAll(const std::wstring& str, const std::wstring&& from, const std::wstring&& to) {
-	return ReplaceAll(str, from, to);
-}
-
-/// <summary>
 /// Join a vector of strings into one string and separate each entry with <paramref name="separator"/>.
 /// </summary>
 /// <param name="list">The vector of string.</param>
@@ -156,26 +112,6 @@ std::wstring String::Join(const std::vector<std::wstring>& list, const std::wstr
 		[&separator](const std::wstring& a, const std::wstring& b) -> std::wstring {
 		return a + (a.length() > 0 ? separator : L"") + b;
 	});
-}
-
-/// <summary>
-/// Join a vector of strings into one string and separate each entry with <paramref name="separator"/>.
-/// </summary>
-/// <param name="list">The vector of string.</param>
-/// <param name="separator">The separator to use in between each string.</param>
-/// <returns>The joined string.</returns>
-std::string String::Join(const std::vector<std::string>& list, const std::string&& separator) {
-	return Join(list, separator);
-}
-
-/// <summary>
-/// Join a vector of strings into one string and separate each entry with <paramref name="separator"/>.
-/// </summary>
-/// <param name="list">The vector of string.</param>
-/// <param name="separator">The separator to use in between each string.</param>
-/// <returns>The joined string.</returns>
-std::wstring String::Join(const std::vector<std::wstring>& list, const std::wstring&& separator) {
-	return Join(list, separator);
 }
 
 /// <summary>
@@ -249,50 +185,6 @@ std::wstring String::PadRight(const std::wstring& input, size_t count, wchar_t c
 /// <param name="count">The minimum length of the string, in characters.</param>
 /// <param name="ch">The character to pad with.</param>
 /// <returns>The new padded string.</returns>
-std::string String::PadLeft(const std::string&& input, size_t count, char ch) {
-	return PadLeft(input, count, ch);
-}
-
-/// <summary>
-/// Pads a string on the right side with character <paramref name="ch"/> if its size is smaller than <paramref name="count"/> and returns the resulting string.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <param name="count">The minimum length of the string, in characters.</param>
-/// <param name="ch">The character to pad with.</param>
-/// <returns>The new padded string.</returns>
-std::string String::PadRight(const std::string&& input, size_t count, char ch) {
-	return PadRight(input, count, ch);
-}
-
-/// <summary>
-/// Pads a string on the left side with character <paramref name="ch"/> if its size is smaller than <paramref name="count"/> and returns the resulting string.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <param name="count">The minimum length of the string, in characters.</param>
-/// <param name="ch">The character to pad with.</param>
-/// <returns>The new padded string.</returns>
-std::wstring String::PadLeft(const std::wstring&& input, size_t count, wchar_t ch) {
-	return PadLeft(input, count, ch);
-}
-
-/// <summary>
-/// Pads a string on the right side with character <paramref name="ch"/> if its size is smaller than <paramref name="count"/> and returns the resulting string.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <param name="count">The minimum length of the string, in characters.</param>
-/// <param name="ch">The character to pad with.</param>
-/// <returns>The new padded string.</returns>
-std::wstring String::PadRight(const std::wstring&& input, size_t count, wchar_t ch) {
-	return PadRight(input, count, ch);
-}
-
-/// <summary>
-/// Pads a string on the left side with character <paramref name="ch"/> if its size is smaller than <paramref name="count"/> and returns the resulting string.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <param name="count">The minimum length of the string, in characters.</param>
-/// <param name="ch">The character to pad with.</param>
-/// <returns>The new padded string.</returns>
 std::string String::PadLeft(const char* input, size_t count, char ch) {
 	return PadLeft(std::string(input), count, ch);
 }
@@ -352,15 +244,6 @@ std::wstring String::ToWString(const std::string& input) {
 }
 
 /// <summary>
-/// Convert a <see cref="::std::string"/> to a <see cref="::std::wstring"/>.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <returns>The converted string.</returns>
-std::wstring String::ToWString(const std::string&& input) {
-	return ToWString(input);
-}
-
-/// <summary>
 /// Convert a <see cref="::std::wstring"/> to a <see cref="::std::string"/>.
 /// </summary>
 /// <param name="input">The input string.</param>
@@ -382,15 +265,6 @@ std::string String::ToString(const std::wstring& input) {
 		throw std::runtime_error("Failed converting UTF-16 string to UTF-8");
 
 	return std::string(&buffer[0], charsConverted);
-}
-
-/// <summary>
-/// Convert a <see cref="::std::wstring"/> to a <see cref="::std::string"/>.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <returns>The converted string.</returns>
-std::string String::ToString(const std::wstring&& input) {
-	return ToString(input);
 }
 
 /// <summary>
@@ -423,15 +297,6 @@ std::string String::TrimLeft(const std::string& input) {
 /// </summary>
 /// <param name="input">The input string.</param>
 /// <returns>The trimmed string.</returns>
-std::string String::TrimLeft(const std::string&& input) {
-	return TrimLeft(input);
-}
-
-/// <summary>
-/// Trim all whitespace of the left side of a string and return a new trimmed string.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <returns>The trimmed string.</returns>
 std::wstring String::TrimLeft(const std::wstring& input) {
 	auto result = input;
 
@@ -440,15 +305,6 @@ std::wstring String::TrimLeft(const std::wstring& input) {
     }));
 
 	return result;
-}
-
-/// <summary>
-/// Trim all whitespace of the left side of a string and return a new trimmed string.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <returns>The trimmed string.</returns>
-std::wstring String::TrimLeft(const std::wstring&& input) {
-	return TrimLeft(input);
 }
 
 /// <summary>
@@ -471,15 +327,6 @@ std::string String::TrimRight(const std::string& input) {
 /// </summary>
 /// <param name="input">The input string.</param>
 /// <returns>The trimmed string.</returns>
-std::string String::TrimRight(const std::string&& input) {
-	return TrimRight(input);
-}
-
-/// <summary>
-/// Trim all whitespace of the right side of a string and return a new trimmed string.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <returns>The trimmed string.</returns>
 std::wstring String::TrimRight(const std::wstring& input) {
 	auto result = input;
 
@@ -488,15 +335,6 @@ std::wstring String::TrimRight(const std::wstring& input) {
     }).base(), result.end());
 
 	return result;
-}
-
-/// <summary>
-/// Trim all whitespace of the right side of a string and return a new trimmed string.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <returns>The trimmed string.</returns>
-std::wstring String::TrimRight(const std::wstring&& input) {
-	return TrimRight(input);
 }
 
 /// <summary>
@@ -513,26 +351,8 @@ std::string String::Trim(const std::string& input) {
 /// </summary>
 /// <param name="input">The input string.</param>
 /// <returns>The trimmed string.</returns>
-std::string String::Trim(const std::string&& input) {
-	return Trim(input);
-}
-
-/// <summary>
-/// Trim all whitespace of both sides of a string and return a new trimmed string.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <returns>The trimmed string.</returns>
 std::wstring String::Trim(const std::wstring& input) {
 	return TrimRight(TrimLeft(input));
-}
-
-/// <summary>
-/// Trim all whitespace of both sides of a string and return a new trimmed string.
-/// </summary>
-/// <param name="input">The input string.</param>
-/// <returns>The trimmed string.</returns>
-std::wstring String::Trim(const std::wstring&& input) {
-	return Trim(input);
 }
 
 /// <summary>
@@ -543,14 +363,4 @@ std::wstring String::Trim(const std::wstring&& input) {
 /// <returns>When found, true is returned.</returns>
 bool String::Contains(const std::string& in, const std::string& find) {
 	return (in.find(find, 0) != std::string::npos);
-}
-
-/// <summary>
-/// Determines if string <paramref name="in"/> contains the string <paramref name="find"/>
-/// </summary>
-/// <param name="in">The string to search.</param>
-/// <param name="find">The string to find.</param>
-/// <returns>When found, true is returned.</returns>
-bool String::Contains(const std::string& in, const std::string&& find) {
-	return Contains(in, find);
 }
