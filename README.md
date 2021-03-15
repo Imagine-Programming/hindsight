@@ -64,6 +64,8 @@ Open an issue on GitHub or @ me, [@BGroothedde](https://twitter.com/BGroothedde)
 Simply clone and open the solution in Visual Studio. A compiled version of distorm is included, but building distorm is trivial as they ship a solution file with a static library configuration as well.
 
 ## Release History
+- **0.6.2.0alpha**:
+    - added a flag to the replay subcommand that enables pausing the terminal after the replay, keeping it open. This might be useful in file-associations (open-with).
 - **0.6.1.0alpha**:
     - quick fix of RTTI information indentation.
 - **0.6.0.0alpha**:
