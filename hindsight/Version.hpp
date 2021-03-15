@@ -40,7 +40,7 @@ examples:
 
 	#define hindsight_version_major			0
 	#define hindsight_version_minor			6
-	#define hindsight_version_revision		1
+	#define hindsight_version_revision		2
 	#define hindsight_version_build			0
 	#define hindsight_version_year_s		"2021"
 	#define hindsight_version_appendix		"alpha"

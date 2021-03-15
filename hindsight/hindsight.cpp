@@ -241,6 +241,9 @@ int ReplayCommand(Cli::HindsightCli& cli) {
 		player = std::make_shared<Hindsight::BinaryLog::BinaryLogPlayer>(command.get<std::string>(Cli::Descriptors::NAME_BINPATH), cli);
 	} catch (const std::exception & e) {
 		std::cout << rang::fgB::red << "error: " << e.what() << std::endl << rang::style::reset;
+		if (command.isset(Cli::Descriptors::NAME_PPAUSE))
+			pause(continue_window);
+		return 1;
 	}
 
 	// write to stdout?
@@ -268,7 +271,13 @@ int ReplayCommand(Cli::HindsightCli& cli) {
 		player->Play();
 	} catch (const std::exception& e) {
 		std::cout << rang::fgB::red << "error: " << e.what() << std::endl << rang::style::reset;
+		if (command.isset(Cli::Descriptors::NAME_PPAUSE))
+			pause(continue_window);
+		return 1;
 	}
+
+	if (command.isset(Cli::Descriptors::NAME_PPAUSE))
+		pause(continue_window);
 	
 	return 0;
 }
@@ -436,6 +445,7 @@ void create_replay_command(Cli::HindsightCli& cli) {
 	)->check(Hindsight::Cli::CliValidator::EventFilterValidator::Validator);
 
 	command.add_flag(Cli::Descriptors::DESC_NOSANITY);
+	command.add_flag(Cli::Descriptors::DESC_PPAUSE);
 
 	// positionals
 	command.add_option<std::string>(Cli::Descriptors::DESC_BINPATH)->required(true)->check(CLI::ExistingFile);

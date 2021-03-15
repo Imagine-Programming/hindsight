@@ -90,6 +90,10 @@
 				static constexpr auto NAME_NOSANITY = "nosanity";
 				static constexpr const OptionDescriptor DESC_NOSANITY(NAME_NOSANITY, "--no-sanity-check", "Do not verify the checksum of the event data in the file");
 
+				// hindsight [opts] replay [opts] --post-pause [file]
+				static constexpr auto NAME_PPAUSE = "ppause";
+				static constexpr const OptionDescriptor DESC_PPAUSE(NAME_PPAUSE, "-p,--post-pause", "After replaying a binary log file, pause and keep the console open until the user presses a key");
+
 				// hindsight [opts] mortem [opts] --process-id
 				static constexpr auto NAME_JITPID = "jitpid";
 				static constexpr const OptionDescriptor DESC_JITPID(NAME_JITPID, "-p,--process-id", "The post-mortem target process ID");
