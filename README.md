@@ -8,6 +8,7 @@ A debugger with a postmortem (JIT) mode for Windows that can be used in conjunct
 Hindsight is not a fully featured debugger that can be used for advanced debugging of software in development phase. Hindsight is a portable debugger that can be run by the end-user to generate a report on some of the behaviour of the program being debugged. The most notable events this debugger is interested in, are breakpoints and exceptions. 
 
 * Exception and breakpoint registering with resolved addresses to the source module;
+* RTTI for MSVC++ Exceptions (0xe06d7363);
 * Full CPU context when the latter occurs (state of CPU registers);
 * Full stack trace with resolved addresses to the source modules of each frame;
 * PDB support, determining full symbol names, source file names and line numbers; (<sup>1</sup>)
@@ -63,6 +64,9 @@ Open an issue on GitHub or @ me, [@BGroothedde](https://twitter.com/BGroothedde)
 Simply clone and open the solution in Visual Studio. A compiled version of distorm is included, but building distorm is trivial as they ship a solution file with a static library configuration as well.
 
 ## Release History
+- **0.6.0.0alpha**:
+    - complete rework of the CLI-argument logic by implementing DynaCli on top of [CLI11](https://github.com/CLIUtils/CLI11) like in [tiffconvert](https://github.com/Imagine-Programming/tiffconvert);
+    - added RTTI for MSVC++ EH Exceptions (0xe06d7363) recording the type-chain of the catchable types, exception messages and throwing modules.
 - **0.5.0.0alpha**:
     - initial public source release;
     - 32-bit build configuration;
