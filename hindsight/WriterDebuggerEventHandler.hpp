@@ -67,6 +67,7 @@
 						/// <param name="context">A shared pointer to a const <see cref="::Hindsight::Debugger::DebugContext"/> instance.</param>
 						/// <param name="trace">A shared pointer to a const <see cref="::Hindsight::Debugger::DebugStackTrace"/> instance.</param>
 						/// <param name="collection">A const reference to the <see cref="::Hindsight::Debugger::ModuleCollection"/> of currently loaded modules at the time of the event.</param>
+						/// <param name="ertti">A shared pointer to a const <see cref="::Hindsight::Debugger::CxxExceptions::ExceptionRtti"/> instance.</param>
 						void OnException(
 							time_t time,
 							const EXCEPTION_DEBUG_INFO& info,
@@ -75,7 +76,8 @@
 							const std::wstring& name,
 							std::shared_ptr<const DebugContext> context,
 							std::shared_ptr<const DebugStackTrace> trace,
-							const ModuleCollection& collection) override;
+							const ModuleCollection& collection,
+							std::shared_ptr<const CxxExceptions::ExceptionRunTimeTypeInformation> ertti) override;
 
 						/// <summary>
 						/// Write the event that denotes the creation of a process.
@@ -263,6 +265,7 @@
 						/// <param name="context">A shared pointer to a <see cref="::Hindsight::Debugger::DebugContext"/> instance.</param>
 						/// <param name="trace">A shared pointer to a <see cref="::Hindsight::Debugger::DebugStackTrace"/> instance.</param>
 						/// <param name="collection">A const reference to a <see cref="Hindsight::Debugger::ModuleCollection"/> instance containing information about loaded modules.</param>
+						/// <param name="ertti">Run-time type information about the exception.</param>
 						/// <param name="isBreak">True when breakpoint, false when exception.</param>
 						void Write(
 							const EXCEPTION_DEBUG_INFO& info,
@@ -270,6 +273,7 @@
 							std::shared_ptr<const DebugContext> context,
 							std::shared_ptr<const DebugStackTrace> trace,
 							const ModuleCollection& collection,
+							std::shared_ptr<const CxxExceptions::ExceptionRunTimeTypeInformation> ertti,
 							bool isBreak);
 
 						/// <summary>

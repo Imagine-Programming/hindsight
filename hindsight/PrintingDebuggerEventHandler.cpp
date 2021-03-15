@@ -255,6 +255,7 @@ void PrintingDebuggerEventHandler::OnBreakpointHit(
 /// <param name="context">A shared pointer to a const <see cref="::Hindsight::Debugger::DebugContext"/> instance.</param>
 /// <param name="trace">A shared pointer to a const <see cref="::Hindsight::Debugger::DebugStackTrace"/> instance.</param>
 /// <param name="collection">A const reference to the <see cref="::Hindsight::Debugger::ModuleCollection"/> of currently loaded modules at the time of the event.</param>
+/// <param name="ertti">A shared pointer to a const <see cref="::Hindsight::Debugger::CxxExceptions::ExceptionRtti"/> instance.</param>
 void PrintingDebuggerEventHandler::OnException(
 	time_t time,
 	const EXCEPTION_DEBUG_INFO& info, 
@@ -263,7 +264,8 @@ void PrintingDebuggerEventHandler::OnException(
 	const std::wstring& name,
 	std::shared_ptr<const DebugContext> context, 
 	std::shared_ptr<const DebugStackTrace> trace, 
-	const ModuleCollection& collection) {
+	const ModuleCollection& collection,
+	std::shared_ptr<const CxxExceptions::ExceptionRunTimeTypeInformation> ertti) {
 
 	rang_timestamp();
 
@@ -290,6 +292,9 @@ void PrintingDebuggerEventHandler::OnException(
 	m_WStream << std::endl;
 
 	rang_reset();
+
+	if (ertti != nullptr)
+		PrintRtti(ertti);
 
 	if (m_PrintContext)
 		PrintContext(context);
@@ -771,4 +776,65 @@ void PrintingDebuggerEventHandler::PrintContext(std::shared_ptr<const DebugConte
 
 	RestoreFlags();
 	m_WStream << std::endl;
+}
+
+/// <summary>
+/// Print a single RTTI class entity.
+/// </summary>
+/// <param name="classSignature">The class signature.</param>
+/// <param name="extends">True when this class extends a following class.</param>
+void PrintingDebuggerEventHandler::PrintClass(const std::string& classSignature, bool extends) const {
+	for (size_t i = 0, l = classSignature.size(); i < l;) {
+		if (classSignature.substr(i, 6) == "class ") { // '[class ]a::b::c<char>::d'
+			rang_color(rang::fg::cyan) << "class ";
+			i += 6;
+		} else if (classSignature.substr(i, 7) == "struct ") { // '[struct ]a::b::c<char>::d'
+			rang_color(rang::fg::cyan) << "struct ";
+			i += 7;
+		} else if (classSignature.substr(i, 2) == "::") { // 'struct a[::]b[::]c<char>[::]d'
+			rang_color(rang::fgB::gray) << "::";
+			i += 2;
+		} else if (classSignature[i] == '<' || classSignature[i] == '>' || classSignature[i] == ',' || classSignature[i] == '.') { // 'struct a::b::c[<]char[,] byte[>]::d'
+			rang_color(rang::fgB::red) << classSignature[i];
+			if (classSignature[i] == ',') m_Stream << " ";
+			i += 1; 
+		} else {
+			rang_color(rang::fgB::cyan) << classSignature[i];
+			i += 1;
+		}
+	}
+
+	rang_color(rang::fg::cyan) << (extends ? " extends: " : ".") << "\n";
+}
+
+/// <summary>
+/// Print the exception run-time type information.
+/// </summary>
+/// <param name="rtti">The RTTI instance.</param>
+void PrintingDebuggerEventHandler::PrintRtti(std::shared_ptr<const CxxExceptions::ExceptionRunTimeTypeInformation> rtti) const {
+	rang_color_wstream(rang::fgB::magenta)
+		<< L"[RTTI]\n";
+
+	// Print each catchable type.
+	const auto& names = rtti->exception_type_names();
+	for (size_t i = 0, limit = names.size(), last = limit - 1; i < limit; ++i) 
+		PrintClass(names[i], i != last);
+
+	// Print the module path of the ThrowInfo* source.
+	if (rtti->exception_module_path().has_value()) {
+		rang_color(rang::fg::yellow)
+			<< "\tthrow info source(): ";
+		rang_color_wstream(rang::fgB::yellow)
+			<< rtti->exception_module_path().value();
+		m_Stream << "\n";
+	}
+
+	// And the exception message, if we managed to find it.
+	if (rtti->exception_message().has_value()) {
+		rang_color(rang::fg::yellow)
+			<< "\twhat(): ";
+		rang_color(rang::fgB::yellow)
+			<< rtti->exception_message().value();
+		m_Stream << "\n";
+	}
 }

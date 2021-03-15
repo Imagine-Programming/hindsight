@@ -111,6 +111,7 @@
 				uint8_t		Wow64			= 0;
 				uint8_t		IsBreakpoint	= 0;
 				uint8_t		IsFirstChance	= 0;
+				uint8_t		HasRtti			= 0; /* does this entry contain RTTI about the catchable types? */
 
 				/// <summary>
 				/// Default constructor, generally used when reading an existing binary log file.

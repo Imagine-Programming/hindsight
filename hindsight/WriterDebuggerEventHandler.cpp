@@ -66,7 +66,7 @@ void WriterDebuggerEventHandler::OnBreakpointHit(
 
 	// Write this exception event, but only indicate if it is a breakpoint or not.
 	// Both the exception and breakpoint event are exception events.
-	Write(info, pi, context, trace, collection, true);
+	Write(info, pi, context, trace, collection, nullptr, true);
 }
 
 /// <summary>
@@ -81,6 +81,7 @@ void WriterDebuggerEventHandler::OnBreakpointHit(
 /// <param name="context">A shared pointer to a const <see cref="::Hindsight::Debugger::DebugContext"/> instance.</param>
 /// <param name="trace">A shared pointer to a const <see cref="::Hindsight::Debugger::DebugStackTrace"/> instance.</param>
 /// <param name="collection">A const reference to the <see cref="::Hindsight::Debugger::ModuleCollection"/> of currently loaded modules at the time of the event.</param>
+/// <param name="ertti">A shared pointer to a const <see cref="::Hindsight::Debugger::CxxExceptions::ExceptionRtti"/> instance.</param>
 void WriterDebuggerEventHandler::OnException(
 	time_t time,
 	const EXCEPTION_DEBUG_INFO& info,
@@ -89,11 +90,12 @@ void WriterDebuggerEventHandler::OnException(
 	const std::wstring& name,
 	std::shared_ptr<const DebugContext> context,
 	std::shared_ptr<const DebugStackTrace> trace,
-	const ModuleCollection& collection) {
+	const ModuleCollection& collection,
+	std::shared_ptr<const CxxExceptions::ExceptionRunTimeTypeInformation> ertti) {
 
 	// Write this exception event, but only indicate if it is a breakpoint or not.
 	// Both the exception and breakpoint event are exception events.
-	Write(info, pi, context, trace, collection, false);
+	Write(info, pi, context, trace, collection, ertti, false);
 }
 
 /// <summary>
@@ -359,13 +361,13 @@ void WriterDebuggerEventHandler::Write(const std::wstring& s, bool writeLength) 
 /// <param name="s">A reference to the string to write.</param>
 /// <param name="writeLength">When set to true, the length of the string will be written as a <see cref="uint32_t"/> before the string.</param>
 void WriterDebuggerEventHandler::Write(const std::string& s, bool writeLength) {
-	if (s.empty())
-		return;
-
 	if (writeLength) {
 		auto size = static_cast<uint32_t>(s.size());
 		Write(reinterpret_cast<const char*>(&size), sizeof(uint32_t));
 	}
+
+	if (s.empty()) 
+		return;
 
 	Write((const char*)s.c_str(), s.size() * sizeof(char));
 }
@@ -393,6 +395,7 @@ void WriterDebuggerEventHandler::Write(const char* data, size_t size, bool updat
 /// <param name="context">A shared pointer to a <see cref="::Hindsight::Debugger::DebugContext"/> instance.</param>
 /// <param name="trace">A shared pointer to a <see cref="::Hindsight::Debugger::DebugStackTrace"/> instance.</param>
 /// <param name="collection">A const reference to a <see cref="Hindsight::Debugger::ModuleCollection"/> instance containing information about loaded modules.</param>
+/// <param name="ertti">Run-time type information about the exception.</param>
 /// <param name="isBreak">True when breakpoint, false when exception.</param>
 void WriterDebuggerEventHandler::Write(
 	const EXCEPTION_DEBUG_INFO& info,
@@ -400,6 +403,7 @@ void WriterDebuggerEventHandler::Write(
 	std::shared_ptr<const DebugContext> context,
 	std::shared_ptr<const DebugStackTrace> trace,
 	const ModuleCollection& collection,
+	std::shared_ptr<const CxxExceptions::ExceptionRunTimeTypeInformation> ertti,
 	bool isBreak) {
 
 	// Create an EventEntry instance for the exception event
@@ -411,6 +415,9 @@ void WriterDebuggerEventHandler::Write(
 		isBreak, 
 		info.dwFirstChance);
 
+	// Also store whether this entry contains run-time type information or not.
+	event.HasRtti = static_cast<uint8_t>(ertti != nullptr);
+
 	// Try to determine information about the module, if available.
 	auto module = collection.GetModuleAtAddress(info.ExceptionRecord.ExceptionAddress);
 	if (module != nullptr) {
@@ -421,8 +428,34 @@ void WriterDebuggerEventHandler::Write(
 		event.EventOffset = 0;
 	}
 
-	// Write the EventEntry, thread context and stack trace
+	// Write the EventEntry, rtti, thread context and stack trace
 	Write(event);
+
+	// RTTI
+	if (ertti != nullptr) {
+		auto type_count = static_cast<uint32_t>(ertti->exception_type_names().size());
+		auto zero_count = static_cast<uint32_t>(0);
+
+		// Write the catchable type-name chain.
+		Write(reinterpret_cast<const char*>(&type_count), sizeof(uint32_t));
+		for (const auto& type_name : ertti->exception_type_names())
+			Write(type_name, true);
+
+		// Write the path to the module that owns the ThrowInfo instance.
+		if (ertti->exception_module_path().has_value()) {
+			Write(ertti->exception_module_path().value(), true);
+		} else {
+			Write(reinterpret_cast<const char*>(&zero_count), sizeof(uint32_t));
+		}
+
+		// Write the exception message.
+		if (ertti->exception_message().has_value()) {
+			Write(ertti->exception_message().value(), true);
+		} else {
+			Write(reinterpret_cast<const char*>(&zero_count), sizeof(uint32_t));
+		}
+	}
+
 	Write(context);
 	Write(trace, collection);
 }

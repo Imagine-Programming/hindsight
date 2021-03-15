@@ -146,3 +146,57 @@ std::wstring Process::ReadStringW(void* address, size_t length) const {
 
 	return result;
 }
+
+/// <summary>
+/// Read an arbitrary amount of memory from the memory space of the process.
+/// </summary>
+/// <param name="address">The address in the memory space of the process where the value is stored.</param>
+/// <param name="length">The length of data to read, in bytes.</param>
+/// <param name="output">The output buffer that will contain the read data.</param>
+/// <returns>When successful, true is returned.</returns>
+bool Process::Read(const void* address, size_t length, void* output) const {
+	if (length == 0)
+		return false;
+
+	SIZE_T readSize;
+
+	if (!ReadProcessMemory(hProcess, reinterpret_cast<LPCVOID>(address), reinterpret_cast<LPVOID>(output), length, &readSize))
+		return false;
+
+	if (static_cast<size_t>(readSize) != length)
+		return false;
+
+	return true;
+}
+
+/// <summary>
+/// Read a (c-style) string from the memory space of the process which should terminate with a single or more \0 character(s).
+/// </summary>
+/// <param name="address">The address in the memory space of the process where the string is stored.</param>
+/// <param name="maximumLength">The length in bytes at which the scan should stop searching for NUL.</param>
+/// <returns>The resulting string, or "" when something went wrong.</returns>
+std::string Process::ReadNulTerminatedString(const void* address, size_t maximumLength) const {
+	std::vector<char> data;
+
+	char   character;
+	size_t offset = 0;
+
+	while (true) {
+		if (!Read(static_cast<const void*>(static_cast<const uint8_t*>(address) + offset), character))
+			return "";
+
+		data.push_back(character);
+
+		if (character == 0)
+			break;
+
+		offset += 1;
+
+		if (maximumLength != 0 && offset >= maximumLength) {
+			data.push_back(0);
+			break;
+		}
+	}
+
+	return std::string(data.begin(), data.end());
+}

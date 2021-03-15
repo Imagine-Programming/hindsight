@@ -18,14 +18,15 @@ using namespace Hindsight::Debugger;
 using namespace Hindsight::Process;
 using namespace Hindsight::Exceptions;
 using namespace Hindsight::Utilities;
+using namespace Hindsight::Debugger::CxxExceptions;
 
 /// <summary>
 /// Construct a new Debugger instance for real-time debugging.
 /// </summary>
 /// <param name="process">A shared pointer to a <see cref="Hindsight::Process::Process"/> instance containing information about the process to be debugged.</param>
 /// <param name="state">The hindsight program argument state.</param>
-Debugger::Debugger(std::shared_ptr<Hindsight::Process::Process> process, const Hindsight::State& state)
-	: m_Process(process), m_State(state) {
+Debugger::Debugger(std::shared_ptr<Hindsight::Process::Process> process, const Cli::HindsightCli& state)
+	: m_Process(process), m_State(state), m_SubState(state[state.get_chosen_subcommand_name()]) {
 
 	// process must be running.
 	if (!m_Process->Running())
@@ -39,8 +40,8 @@ Debugger::Debugger(std::shared_ptr<Hindsight::Process::Process> process, const H
 /// <param name="state">The hindsight program argument state.</param>
 /// <param name="jitEvent">The event handle copied into the hindsight process, so that WER can be signaled to let the debugged process continue.</param>
 /// <param name="jit">An address in the debugged process address space pointing to a <see cref="JIT_DEBUG_INFO"/> instance.</param>
-Debugger::Debugger(std::shared_ptr<Hindsight::Process::Process> process, const Hindsight::State& state, HANDLE jitEvent, void* jit)
-	: m_Process(process), m_State(state) {
+Debugger::Debugger(std::shared_ptr<Hindsight::Process::Process> process, const Cli::HindsightCli& state, HANDLE jitEvent, void* jit)
+	: m_Process(process), m_State(state), m_SubState(state[state.get_chosen_subcommand_name()]) {
 
 	m_Jit = std::make_shared<JitDebuggerInfo>();
 	m_Jit->JitEvent = jitEvent;
@@ -87,8 +88,8 @@ bool Debugger::Attach(bool killOnDetach) {
 		EnumerateProcessModules(m_Process->hProcess);
 
 		// Add the process image path to the search path if specified in the flags.
-		auto pdbSearchPaths = m_State.PdbSearchPath;
-		if (m_State.PdbSearchSelf)
+		auto pdbSearchPaths = m_SubState.get<std::vector<std::string>>(Cli::Descriptors::NAME_PDBSEARCH);
+		if (m_SubState.isset(Cli::Descriptors::NAME_PDBSELF))
 			pdbSearchPaths.push_back(Path::GetModulePath(m_Process->hProcess, NULL));
 		
 		union {
@@ -106,17 +107,26 @@ bool Debugger::Attach(bool killOnDetach) {
 		}
 
 		// Get stack trace.
-		initialStackTrace = std::make_shared<DebugStackTrace>(initialContext, m_LoadedModules, String::Join(pdbSearchPaths, ";"), m_State.MaxRecursion, m_State.MaxInstruction);
+		initialStackTrace = std::make_shared<DebugStackTrace>(
+			initialContext, m_LoadedModules, String::Join(pdbSearchPaths, ";"), 
+			m_SubState.get<size_t>(Cli::Descriptors::NAME_MAX_RECURSION), 
+			m_SubState.get<size_t>(Cli::Descriptors::NAME_MAX_INSTRUCTION));
 
 		// Construct the exception object.
 		EXCEPTION_DEBUG_INFO exception;
-		exception.dwFirstChance = true;
+		exception.dwFirstChance = false;
 		m_Process->Read(reinterpret_cast<void*>(m_Jit->JitInfo.lpExceptionRecord), exception.ExceptionRecord);
 		exception.ExceptionRecord.ExceptionAddress = reinterpret_cast<PVOID>(m_Jit->JitInfo.lpExceptionAddress);
 
+		// If this is a C++ EH Exception from MSVC++, we can intercept some information from it.
+		std::shared_ptr<ExceptionRunTimeTypeInformation> ertti = nullptr;
+		if (exception.ExceptionRecord.ExceptionCode == static_cast<DWORD>(EH_EXCEPTION_NUMBER))
+		if (exception.ExceptionRecord.ExceptionInformation[0] == static_cast<ULONG_PTR>(EH_MAGIC_NUMBER1))
+			ertti = std::make_shared<ExceptionRunTimeTypeInformation>(m_Process, exception.ExceptionRecord, m_LoadedModules);
+
 		for (auto handler : m_Handlers) {
 			// Emit the JIT exception to the handler.
-			EmitJitException(handler, m_Jit->JitInfo, exception, initialContext, initialStackTrace);
+			EmitJitException(handler, m_Jit->JitInfo, exception, initialContext, initialStackTrace, ertti);
 
 			// ... and then finalize the handler
 			handler->OnModuleCollectionComplete(time, m_LoadedModules);
@@ -124,7 +134,7 @@ bool Debugger::Attach(bool killOnDetach) {
 
 		// Kill the process, it might trigger another instance of the mortem subcommand - but it will exit as the process is gone.
 		m_Process->Kill(static_cast<UINT>(exception.ExceptionRecord.ExceptionCode));
-		SetEvent(m_State.PostMortemEvent); /* signal WER we resolved the issue */
+		SetEvent(m_SubState.get<HANDLE>(Cli::Descriptors::NAME_JITEVENT)); /* signal WER we resolved the issue */
 
 		return true;
 	}
@@ -212,12 +222,12 @@ void Debugger::EnumerateProcessModules(HANDLE hProcess) {
 /// <param name="exception">A const reference to the normalized <see cref="EXCEPTION_DEBUG_INFO"/> struct.</param>
 /// <param name="context">A shared pointer to the thread context where the exception was raised.</param>
 /// <param name="trace">A shared pointer to the stack trace starting from the program counter address where the exception originated.</param>
-void Debugger::EmitJitException(std::shared_ptr<EventHandler::IDebuggerEventHandler> handler, const JIT_DEBUG_INFO& info, const EXCEPTION_DEBUG_INFO& exception, std::shared_ptr<DebugContext> context, std::shared_ptr<DebugStackTrace> trace) {
+void Debugger::EmitJitException(std::shared_ptr<EventHandler::IDebuggerEventHandler> handler, const JIT_DEBUG_INFO& info, const EXCEPTION_DEBUG_INFO& exception, std::shared_ptr<DebugContext> context, std::shared_ptr<DebugStackTrace> trace, std::shared_ptr<CxxExceptions::ExceptionRunTimeTypeInformation> ertti) {
 	std::wstring name;
 	if (ExceptionNames.count(exception.ExceptionRecord.ExceptionCode))
 		name = ExceptionNames.at(exception.ExceptionRecord.ExceptionCode);
 
-	handler->OnException(std::time(nullptr), exception, m_Process->GetProcessInformation(), static_cast<bool>(exception.dwFirstChance), name, context, trace, m_LoadedModules);
+	handler->OnException(std::time(nullptr), exception, m_Process->GetProcessInformation(), static_cast<bool>(exception.dwFirstChance), name, context, trace, m_LoadedModules, ertti);
 }
 
 /// <summary>
@@ -263,13 +273,16 @@ bool Debugger::Tick() {
 			continueStatus = DBG_EXCEPTION_NOT_HANDLED;
 
 			// Add the process module's path to the PDB search list if the -S option was used.
-			auto pdbSearchPaths = m_State.PdbSearchPath;
-			if (m_State.PdbSearchSelf)
-				pdbSearchPaths.push_back(Path::GetModulePath(pi.hProcess, NULL));
+			auto pdbSearchPaths = m_SubState.get<std::vector<std::string>>(Cli::Descriptors::NAME_PDBSEARCH);
+			if (m_SubState.isset(Cli::Descriptors::NAME_PDBSELF))
+				pdbSearchPaths.push_back(Path::GetModulePath(m_Process->hProcess, NULL));
 
 			// Construct a thread context for this state and construct a stack trace from that context.
 			auto context = std::make_shared<DebugContext>(pi.hProcess, pi.hThread);
-			auto trace   = std::make_shared<DebugStackTrace>(context, m_LoadedModules, String::Join(pdbSearchPaths, ";"), m_State.MaxRecursion, m_State.MaxInstruction);
+			auto trace   = std::make_shared<DebugStackTrace>(
+				context, m_LoadedModules, String::Join(pdbSearchPaths, ";"), 
+				m_SubState.get<size_t>(Cli::Descriptors::NAME_MAX_RECURSION),
+				m_SubState.get<size_t>(Cli::Descriptors::NAME_MAX_INSTRUCTION));
 
 			// Differentiate exceptions from breakpoints. Single-step exceptions are just walked over as regular exceptions.
 			switch (event.u.Exception.ExceptionRecord.ExceptionCode) {
@@ -279,7 +292,7 @@ bool Debugger::Tick() {
 						handler->OnBreakpointHit(time, event.u.Exception, pi, context, trace, m_LoadedModules);
 
 					// Should we break?
-					if (m_State.BreakOnBreakpoints)
+					if (m_SubState.isset(Cli::Descriptors::NAME_BREAKB))
 						HandleBreakpointOptions();
 
 					break;
@@ -291,12 +304,18 @@ bool Debugger::Tick() {
 					// Try to get a name for the exception, if it is a standard error code.
 					if (ExceptionNames.count(event.u.Exception.ExceptionRecord.ExceptionCode))
 						name = ExceptionNames.at(event.u.Exception.ExceptionRecord.ExceptionCode);
-
+					
+					// If this is a C++ EH Exception from MSVC++, we can intercept some information from it.
+					std::shared_ptr<ExceptionRunTimeTypeInformation> ertti = nullptr;
+					if (event.u.Exception.ExceptionRecord.ExceptionCode == static_cast<DWORD>(EH_EXCEPTION_NUMBER)) 
+					if (event.u.Exception.ExceptionRecord.ExceptionInformation[0] == static_cast<ULONG_PTR>(EH_MAGIC_NUMBER1)) 
+						ertti = std::make_shared<ExceptionRunTimeTypeInformation>(m_Process, event.u.Exception.ExceptionRecord, m_LoadedModules);
+					
 					for (auto handler : m_Handlers)
-						handler->OnException(time, event.u.Exception, pi, static_cast<bool>(event.u.Exception.dwFirstChance), name, context, trace, m_LoadedModules);
+						handler->OnException(time, event.u.Exception, pi, static_cast<bool>(event.u.Exception.dwFirstChance), name, context, trace, m_LoadedModules, ertti);
 
 					// Should we break?
-					if (m_State.BreakOnExceptions && (!m_State.BreakOnFirstChanceOnly || event.u.Exception.dwFirstChance))
+					if (m_SubState.isset(Cli::Descriptors::NAME_BREAKE) && (!m_SubState.isset(Cli::Descriptors::NAME_BREAKF) || event.u.Exception.dwFirstChance))
 						HandleBreakpointOptions();
 
 					break;
@@ -462,6 +481,7 @@ std::map<DWORD, std::wstring> Debugger::ExceptionNames = {
 	//{ EXCEPTION_POSSIBLE_DEADLOCK,			L"EXCEPTION_POSSIBLE_DEADLOCK" },
 	{ EXCEPTION_INVALID_HANDLE,				L"EXCEPTION_INVALID_HANDLE" },
 	{ STATUS_WX86_BREAKPOINT,				L"STATUS_WX86_BREAKPOINT" },
-	{ STATUS_WX86_SINGLE_STEP,				L"STATUS_WX86_SINGLE_STEP" }
-
+	{ STATUS_WX86_SINGLE_STEP,				L"STATUS_WX86_SINGLE_STEP" },
+	{ EH_EXCEPTION_THREAD_NAME,				L"THREAD_NAMING" },
+	{ EH_EXCEPTION_NUMBER,					L"CXX_VCPP_EH_EXCEPTION" }
 };

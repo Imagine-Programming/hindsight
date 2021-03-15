@@ -5,7 +5,8 @@
 	#include "BinaryLogFile.hpp"
 	#include "IDebuggerEventHandler.hpp"
 	#include "ModuleCollection.hpp"
-	#include "State.hpp"
+	#include "DynaCli.hpp"
+	#include "ArgumentNames.hpp"
 
 	#include <memory>
 	#include <vector>
@@ -24,14 +25,15 @@
 			/// </summary>
 			class BinaryLogPlayer {
 				private:
-					std::ifstream			m_Stream;
-					size_t					m_StreamSize;
-					const Hindsight::State& m_State;
-					bool					m_ShouldFilter;
-					std::set<std::string>	m_Filter;
+					std::ifstream				m_Stream;
+					size_t						m_StreamSize;
+					const Cli::HindsightCli&	m_State;
+					const Cli::HindsightCli&	m_SubState;
+					bool						m_ShouldFilter;
+					std::set<std::string>		m_Filter;
 
-					FileHeader				m_Header;
-					uint32_t				m_Crc32;
+					FileHeader					m_Header;
+					uint32_t					m_Crc32;
 
 					std::vector<std::shared_ptr<EventHandler::IDebuggerEventHandler>> m_Handlers;
 
@@ -46,7 +48,7 @@
 					/// <param name="path">The path to a HIND file, the binary log format of hindsight.</param>
 					/// <param name="state">The state obtained through processing program arguments through <see cref="CLI::App"/>.</param>
 					/// <exception cref="std::runtime_error">This exception is thrown when the file cannot be opened or is not a valid binary log file.</exception>
-					BinaryLogPlayer(const std::string& path, const Hindsight::State& state);
+					BinaryLogPlayer(const std::string& path, const Cli::HindsightCli& state);
 
 					/// <summary>
 					/// Walks the binary log file and verifies that all data matches the <see cref="Hindsight::BinaryLog::FileHeader::Crc32"/>.

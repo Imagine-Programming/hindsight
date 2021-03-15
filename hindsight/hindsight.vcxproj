@@ -117,6 +117,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -161,6 +162,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <GenerateXMLDocumentationFiles>true</GenerateXMLDocumentationFiles>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -179,6 +181,7 @@
     <ClCompile Include="DebugStackTrace.cpp" />
     <ClCompile Include="Error.cpp" />
     <ClCompile Include="EventFilterValidator.cpp" />
+    <ClCompile Include="ExceptionRtti.cpp" />
     <ClCompile Include="hindsight.cpp" />
     <ClCompile Include="Launcher.cpp" />
     <ClCompile Include="ModuleCollection.cpp" />
@@ -189,10 +192,13 @@
     <ClCompile Include="WriterDebuggerEventHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ArgumentNames.hpp" />
     <ClInclude Include="BinaryLogFile.hpp" />
     <ClInclude Include="BinaryLogPlayer.hpp" />
     <ClInclude Include="crc32.hpp" />
+    <ClInclude Include="DynaCli.hpp" />
     <ClInclude Include="EventFilterValidator.hpp" />
+    <ClInclude Include="ExceptionRtti.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Version.hpp" />
     <ClInclude Include="WriterDebuggerEventHandler.hpp" />
@@ -210,13 +216,13 @@
     <ClInclude Include="PrintingDebuggerEventHandler.hpp" />
     <ClInclude Include="Process.hpp" />
     <ClInclude Include="rang.hpp" />
-    <ClInclude Include="State.hpp" />
     <ClInclude Include="String.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="hindsight.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\hindsight\logo\hindsight.ico" />
     <Image Include="..\logo\hindsight.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

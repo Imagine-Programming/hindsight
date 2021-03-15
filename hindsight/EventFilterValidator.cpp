@@ -1,7 +1,7 @@
 #include "EventFilterValidator.hpp"
 #include "String.hpp"
 
-using namespace Hindsight::CliValidator;
+using namespace Hindsight::Cli::CliValidator;
 
 /// <summary>
 /// A static collection of valid event names.

@@ -115,7 +115,8 @@
 						/// <param name="context">A shared pointer to a const <see cref="::Hindsight::Debugger::DebugContext"/> instance.</param>
 						/// <param name="trace">A shared pointer to a const <see cref="::Hindsight::Debugger::DebugStackTrace"/> instance.</param>
 						/// <param name="collection">A const reference to the <see cref="::Hindsight::Debugger::ModuleCollection"/> of currently loaded modules at the time of the event.</param>
-						void OnException(
+						/// <param name="ertti">A shared pointer to a const <see cref="::Hindsight::Debugger::CxxExceptions::ExceptionRtti"/> instance.</param>
+						virtual void OnException(
 							time_t time,
 							const EXCEPTION_DEBUG_INFO& info,
 							const PROCESS_INFORMATION& pi,
@@ -123,7 +124,8 @@
 							const std::wstring& name,
 							std::shared_ptr<const DebugContext> context,
 							std::shared_ptr<const DebugStackTrace> trace,
-							const ModuleCollection& collection) override;
+							const ModuleCollection& collection,
+							std::shared_ptr<const CxxExceptions::ExceptionRunTimeTypeInformation> ertti) override;
 
 						/// <summary>
 						/// Log the process creation, with its PID and full path.
@@ -294,6 +296,19 @@
 						/// </summary>
 						/// <param name="context">A shared pointer to the thread context at the time of the event.</param>
 						void PrintContext(std::shared_ptr<const DebugContext> context) const;
+
+						/// <summary>
+						/// Print a single RTTI class entity.
+						/// </summary>
+						/// <param name="classSignature">The class signature.</param>
+						/// <param name="extends">True when this class extends a following class.</param>
+						void PrintClass(const std::string& classSignature, bool extends) const;
+
+						/// <summary>
+						/// Print the exception run-time type information.
+						/// </summary>
+						/// <param name="rtti">The RTTI instance.</param>
+						void PrintRtti(std::shared_ptr<const CxxExceptions::ExceptionRunTimeTypeInformation> rtti) const;
 				};
 			}
 		}

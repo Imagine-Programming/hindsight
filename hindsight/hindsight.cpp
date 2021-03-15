@@ -11,10 +11,11 @@
 #include "resource.h"
 
 #include "CLI11.hpp"
+#include "DynaCli.hpp"
+#include "ArgumentNames.hpp"
 #include "rang.hpp"
 #include "Version.hpp"
 
-#include "State.hpp"
 #include "EventFilterValidator.hpp"
 
 #include "Launcher.hpp"
@@ -124,17 +125,17 @@ void PreProcessPath(std::string& input, tm& time, const std::string& image) {
 /// </summary>
 /// <param name="state">The state obtained through processing program arguments through <see cref="CLI::App"/>.</param>
 /// <param name="process">The <see cref="::Hindsight::Process::Process"/> that is being debugged.</param>
-void PreProcessState(State& state, std::shared_ptr<Hindsight::Process::Process> process) {
+void PreProcessState(Cli::HindsightCli& cli, std::shared_ptr<Hindsight::Process::Process> process) {
 	auto t  =  std::time(nullptr);
 	tm time;
 	localtime_s(&time, &t); 
 
 	auto image = fs::path(process->Path).filename().string();
 
-	if (!state.OutputBinaryFile.empty())
-		PreProcessPath(state.OutputBinaryFile, time, image);
-	if (!state.OutputTextFile.empty())
-		PreProcessPath(state.OutputTextFile, time, image);
+	if (cli.isset(Cli::Descriptors::NAME_LOGBIN))
+		PreProcessPath(cli.get<std::string>(Cli::Descriptors::NAME_LOGBIN), time, image);
+	if (cli.isset(Cli::Descriptors::NAME_LOGTEXT))
+		PreProcessPath(cli.get<std::string>(Cli::Descriptors::NAME_LOGTEXT), time, image);
 }
 
 /// <summary>
@@ -161,20 +162,22 @@ void pause(const char* what) {
 /// </summary>
 /// <param name="state">The state obtained through processing program arguments through <see cref="CLI::App"/>.</param>
 /// <returns>The program exit code.</returns>
-int LaunchCommand(State& state) {
+int LaunchCommand(Cli::HindsightCli& cli) {
 	std::shared_ptr<Hindsight::Process::Process>   process;
 	std::shared_ptr<Hindsight::Debugger::Debugger> debugger;
 
-	if (state.MaxRecursion == 0)
-		state.MaxRecursion = SIZE_MAX;
+	auto& command = cli[cli.get_chosen_subcommand_name()];
+
+	if (!command.isset(Cli::Descriptors::NAME_MAX_RECURSION) || command.get<size_t>(Cli::Descriptors::NAME_MAX_RECURSION) == 0)
+		command.set(Cli::Descriptors::NAME_MAX_RECURSION, static_cast<size_t>(SIZE_MAX));
 
 	try {
 		process = Hindsight::Process::Launcher::StartSuspended(
-			Hindsight::Utilities::Path::Absolute(state.ProgramPath), 
-			Hindsight::Utilities::Path::Absolute(state.WorkingDirectory), 
-			state.Arguments);
+			Hindsight::Utilities::Path::Absolute(command.get<std::string>(Cli::Descriptors::NAME_PROGPATH)),
+			Hindsight::Utilities::Path::Absolute(command.get<std::string>(Cli::Descriptors::NAME_WORKDIR)),
+			command.get<std::vector<std::string>>(Cli::Descriptors::NAME_ARGUMENTS));
 
-		PreProcessState(state, process);
+		PreProcessState(cli, process);
 	} catch (const Hindsight::Exceptions::LauncherFailedException& e) {
 		std::cout << rang::fgB::red << "error: " << e.what() << std::endl << rang::style::reset;
 		return 1;
@@ -182,26 +185,31 @@ int LaunchCommand(State& state) {
 
 	// attach debugger
 	try {
-		debugger = std::make_shared<Hindsight::Debugger::Debugger>(process, state);
+		debugger = std::make_shared<Hindsight::Debugger::Debugger>(process, cli);
 	} catch (const Hindsight::Exceptions::ProcessNotRunningException & e) {
 		std::cout << rang::fgB::red << "error: " << e.what() << std::endl << rang::style::reset;
 		return 1;
 	}
 
 	// write to stdout?
-	if (state.StandardOut) 
-		debugger->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::PrintingDebuggerEventHandler>(!state.Bland, state.PrintTimestamp, state.PrintContext));
+	if (cli.isset(Cli::Descriptors::NAME_STDOUT)) 
+		debugger->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::PrintingDebuggerEventHandler>(
+			!cli.isset(Cli::Descriptors::NAME_BLAND), 
+			command.isset(Cli::Descriptors::NAME_PRINTTIME), 
+			command.isset(Cli::Descriptors::NAME_PRINTCTX)));
 	
 	// write to text file?
-	if (state.TextFileOut) {
-		Utilities::Path::EnsureParentExists(state.OutputTextFile);
-		debugger->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::PrintingDebuggerEventHandler>(state.OutputTextFile, state.PrintContext));
+	if (cli.isset(Cli::Descriptors::NAME_LOGTEXT)) {
+		Utilities::Path::EnsureParentExists(cli.get<std::string>(Cli::Descriptors::NAME_LOGTEXT));
+		debugger->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::PrintingDebuggerEventHandler>(
+			cli.get<std::string>(Cli::Descriptors::NAME_LOGTEXT), 
+			command.isset(Cli::Descriptors::NAME_PRINTCTX)));
 	}
 
 	// write to binary file?
-	if (state.BinaryFileOut) {
-		Utilities::Path::EnsureParentExists(state.OutputBinaryFile);
-		debugger->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::WriterDebuggerEventHandler>(state.OutputBinaryFile));
+	if (cli.isset(Cli::Descriptors::NAME_LOGBIN)) {
+		Utilities::Path::EnsureParentExists(cli.get<std::string>(Cli::Descriptors::NAME_LOGBIN));
+		debugger->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::WriterDebuggerEventHandler>(cli.get<std::string>(Cli::Descriptors::NAME_LOGBIN)));
 	}
 
 	if (!debugger->Attach()) {
@@ -224,29 +232,36 @@ int LaunchCommand(State& state) {
 /// </summary>
 /// <param name="state">The state obtained through processing program arguments through <see cref="CLI::App"/>.</param>
 /// <returns>The program exit code.</returns>
-int ReplayCommand(State& state) {
+int ReplayCommand(Cli::HindsightCli& cli) {
 	std::shared_ptr<Hindsight::BinaryLog::BinaryLogPlayer> player;
 
+	auto& command = cli[cli.get_chosen_subcommand_name()];
+
 	try {
-		player = std::make_shared<Hindsight::BinaryLog::BinaryLogPlayer>(state.ReplayFile, state);
+		player = std::make_shared<Hindsight::BinaryLog::BinaryLogPlayer>(command.get<std::string>(Cli::Descriptors::NAME_BINPATH), cli);
 	} catch (const std::exception & e) {
 		std::cout << rang::fgB::red << "error: " << e.what() << std::endl << rang::style::reset;
 	}
 
 	// write to stdout?
-	if (state.StandardOut)
-		player->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::PrintingDebuggerEventHandler>(!state.Bland, state.PrintTimestamp, state.PrintContext));
+	if (cli.isset(Cli::Descriptors::NAME_STDOUT)) 
+		player->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::PrintingDebuggerEventHandler>(
+			!cli.isset(Cli::Descriptors::NAME_BLAND),
+			command.isset(Cli::Descriptors::NAME_PRINTTIME),
+			command.isset(Cli::Descriptors::NAME_PRINTCTX)));
 
 	// write to text file?
-	if (state.TextFileOut) {
-		Utilities::Path::EnsureParentExists(state.OutputTextFile);
-		player->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::PrintingDebuggerEventHandler>(state.OutputTextFile, state.PrintContext));
+	if (cli.isset(Cli::Descriptors::NAME_LOGTEXT)) {
+		Utilities::Path::EnsureParentExists(cli.get<std::string>(Cli::Descriptors::NAME_LOGTEXT));
+		player->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::PrintingDebuggerEventHandler>(
+			cli.get<std::string>(Cli::Descriptors::NAME_LOGTEXT),
+			command.isset(Cli::Descriptors::NAME_PRINTCTX)));
 	}
 
 	// write to binary file?
-	if (state.BinaryFileOut) {
-		Utilities::Path::EnsureParentExists(state.OutputBinaryFile);
-		player->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::WriterDebuggerEventHandler>(state.OutputBinaryFile));
+	if (cli.isset(Cli::Descriptors::NAME_LOGBIN)) {
+		Utilities::Path::EnsureParentExists(cli.get<std::string>(Cli::Descriptors::NAME_LOGBIN));
+		player->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::WriterDebuggerEventHandler>(cli.get<std::string>(Cli::Descriptors::NAME_LOGBIN)));
 	}
 
 	try {
@@ -263,11 +278,13 @@ int ReplayCommand(State& state) {
 /// </summary>
 /// <param name="state">The state obtained through processing program arguments through <see cref="CLI::App"/>.</param>
 /// <returns>The program exit code.</returns>
-int MortemCommand(State& state) {
+int MortemCommand(Cli::HindsightCli& cli) {
 	HWND hWndConsole = GetConsoleWindow();
 	ShowWindow(hWndConsole, SW_HIDE);
 
-	auto hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, state.PostMortemProcessId);
+	auto& command = cli[cli.get_chosen_subcommand_name()];
+
+	auto hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, command.get<DWORD>(Cli::Descriptors::NAME_JITPID));
 	if (!hProcess) {
 		std::cout << rang::fgB::red << "error: cannot open debuggee process with all access, " << Utilities::Error::GetErrorMessage(GetLastError()) << rang::style::reset << std::endl;
 		return 1;
@@ -276,17 +293,18 @@ int MortemCommand(State& state) {
 	std::shared_ptr<Hindsight::Process::Process>   process;
 	std::shared_ptr<Hindsight::Debugger::Debugger> debugger;
 
-	if (state.MaxRecursion == 0)
-		state.MaxRecursion = SIZE_MAX;
+	if (!command.isset(Cli::Descriptors::NAME_MAX_RECURSION) || command.get<size_t>(Cli::Descriptors::NAME_MAX_RECURSION) == 0)
+		command.set(Cli::Descriptors::NAME_MAX_RECURSION, static_cast<size_t>(SIZE_MAX));
 
 	try {
 		std::string path;
 		std::string wdir;
 		std::vector<std::string> args;
+
 		PROCESS_INFORMATION pi = {
 			hProcess,
 			NULL,
-			state.PostMortemProcessId,
+			command.get<DWORD>(Cli::Descriptors::NAME_JITPID),
 			NULL
 		};
 		process = std::make_shared<Hindsight::Process::Process>(pi, path, wdir, args);
@@ -298,7 +316,7 @@ int MortemCommand(State& state) {
 		process->WorkingDirectory = "";
 		process->Arguments = {};
 
-		PreProcessState(state, process);
+		PreProcessState(cli, process);
 	} catch (const Hindsight::Exceptions::LauncherFailedException& e) {
 		std::cout << rang::fgB::red << "error: " << e.what() << std::endl << rang::style::reset;
 		return 1;
@@ -306,22 +324,28 @@ int MortemCommand(State& state) {
 
 	// attach debugger
 	try {
-		debugger = std::make_shared<Hindsight::Debugger::Debugger>(process, state, state.PostMortemEvent, state.PostMortemJitDebugEventInfo);
+		debugger = std::make_shared<Hindsight::Debugger::Debugger>(
+			process, cli, 
+			command.get<HANDLE>(Cli::Descriptors::NAME_JITEVENT), 
+			command.get<void*>(Cli::Descriptors::NAME_JITINFO));
+
 	} catch (const Hindsight::Exceptions::ProcessNotRunningException & e) {
 		std::cout << rang::fgB::red << "error: " << e.what() << std::endl << rang::style::reset;
 		return 1;
 	}
 
 	// write to text file?
-	if (state.TextFileOut) {
-		Utilities::Path::EnsureParentExists(state.OutputTextFile);
-		debugger->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::PrintingDebuggerEventHandler>(state.OutputTextFile, state.PrintContext));
+	if (cli.isset(Cli::Descriptors::NAME_LOGTEXT)) {
+		Utilities::Path::EnsureParentExists(cli.get<std::string>(Cli::Descriptors::NAME_LOGTEXT));
+		debugger->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::PrintingDebuggerEventHandler>(
+			cli.get<std::string>(Cli::Descriptors::NAME_LOGTEXT),
+			command.isset(Cli::Descriptors::NAME_PRINTCTX)));
 	}
 
 	// write to binary file?
-	if (state.BinaryFileOut) {
-		Utilities::Path::EnsureParentExists(state.OutputBinaryFile);
-		debugger->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::WriterDebuggerEventHandler>(state.OutputBinaryFile));
+	if (cli.isset(Cli::Descriptors::NAME_LOGBIN)) {
+		Utilities::Path::EnsureParentExists(cli.get<std::string>(Cli::Descriptors::NAME_LOGBIN));
+		debugger->AddHandler(std::make_shared<Hindsight::Debugger::EventHandler::WriterDebuggerEventHandler>(cli.get<std::string>(Cli::Descriptors::NAME_LOGBIN)));
 	}
 
 	if (!debugger->Attach()) {
@@ -331,7 +355,7 @@ int MortemCommand(State& state) {
 		return 1;
 	}
 
-	if (state.PostMortemNotify) {
+	if (command.isset(Cli::Descriptors::NAME_JITNOTIFY)) {
 		auto image = fs::path(process->Path).filename().string();
 		std::cout << rang::style::reset << "You were running " << rang::fgB::cyan << image << rang::style::reset
 			<< " with PID " << rang::fgB::green << process->dwProcessId << rang::style::reset << "," << std::endl
@@ -342,10 +366,10 @@ int MortemCommand(State& state) {
 		std::cout << "hindsight, the debugger that you are seeing right now, has" << std::endl
 			<< "placed information about this crash in one or more files on your device:" << std::endl << std::endl;
 
-		if (state.TextFileOut)
-			std::cout << " - " << rang::fgB::green << state.OutputTextFile << rang::style::reset << std::endl;
-		if (state.BinaryFileOut)
-			std::cout << " - " << rang::fgB::green << state.OutputBinaryFile << rang::style::reset << std::endl;
+		if (cli.isset(Cli::Descriptors::NAME_LOGTEXT))
+			std::cout << " - " << rang::fgB::green << cli.get<std::string>(Cli::Descriptors::NAME_LOGTEXT) << rang::style::reset << std::endl;
+		if (cli.isset(Cli::Descriptors::NAME_LOGBIN))
+			std::cout << " - " << rang::fgB::green << cli.get<std::string>(Cli::Descriptors::NAME_LOGBIN) << rang::style::reset << std::endl;
 
 		std::cout << std::endl
 			<< "You can view these files yourself, or send them unmodified to your " << std::endl
@@ -365,66 +389,25 @@ int MortemCommand(State& state) {
 /// <param name="state">The state obtained through processing program arguments through <see cref="CLI::App"/>.</param>
 /// <param name="print_context">A reference to a <see cref="CLI::Option"/> pointer that will receive the print_context flag.</param>
 /// <param name="print_timestamp">A reference to a <see cref="CLI::Option"/> pointer that will receive the print_timestamp flag.</param>
-/// <returns>A pointer to the resulting <see cref="CLI:App"/> instance for this subcommand.</returns>
-CLI::App* create_launch_command(CLI::App& app, State& state, CLI::Option*& print_context, CLI::Option*& print_timestamp) {
-	// the launch command
-	auto launch_command = app.add_subcommand("launch", "Launch an application, suspend it and attach this debugger to it");
+void create_launch_command(Cli::HindsightCli& cli) {
+	// the launch command, see ArgumentNames for descriptions on each flag and option.
+	auto& command = cli.add_subcommand(Cli::Descriptors::NAME_SUBCOMMAND_LAUNCH, Cli::Descriptors::DESC_SUBCOMMAND_LAUNCH);
 
-	// launch -w "working directory"
-	auto workdir = launch_command->add_option("-w,--working-directory", state.WorkingDirectory, "The working directory for the program to start")
-		->required(false)
-		->check(CLI::ExistingDirectory);
+	// flags and options
+	command.add_option<std::string>(Cli::Descriptors::DESC_WORKDIR)->check(CLI::ExistingDirectory);
+	command.add_flag(Cli::Descriptors::DESC_BREAKB);
+	command.add_flag(Cli::Descriptors::DESC_BREAKE);
+	command.add_flag(Cli::Descriptors::DESC_BREAKF)->needs(command.get_option(Cli::Descriptors::NAME_BREAKE));
+	command.add_option<size_t>(Cli::Descriptors::DESC_MAX_RECURSION)->default_val("0");
+	command.add_option<size_t>(Cli::Descriptors::DESC_MAX_INSTRUCTION)->default_val("0");
+	command.add_flag(Cli::Descriptors::DESC_PRINTCTX);
+	command.add_flag(Cli::Descriptors::DESC_PRINTTIME);
+	command.add_option<std::vector<std::string>>(Cli::Descriptors::DESC_PDBSEARCH)->check(CLI::ExistingDirectory);
+	command.add_flag(Cli::Descriptors::DESC_PDBSELF);
 
-	// launch -b 
-	auto break_on_breakpoint = launch_command->add_flag("-b,--break-breakpoint", state.BreakOnBreakpoints, "Break on breakpoints")
-		->required(false);
-
-	// launch -e
-	auto break_on_exceptions = launch_command->add_flag("-e,--break-exception", state.BreakOnExceptions, "Break on exceptions")
-		->required(false);
-
-	// launch -f
-	auto break_on_first_chance = launch_command->add_flag("-f,--first-chance", state.BreakOnFirstChanceOnly, "Only break on first-chance exceptions")
-		->needs(break_on_exceptions)
-		->required(false);
-
-	// launch -r #num
-	auto max_recursion = launch_command->add_option("-r,--max-recursion", state.MaxRecursion, "Set the maximum number of recursive frames in a stack trace. Use 0 to set to unlimited")
-		->default_val("10")
-		->required(false);
-
-	// launch -i #num 
-	auto max_instruction = launch_command->add_option("-i,--max-instruction", state.MaxInstruction, "Set the maximum number of instructions to include in a stack trace. Use 0 to disable")
-		->default_val("0")
-		->required(false);
-
-	// launch -c 
-	print_context = launch_command->add_flag("-c,--print-context", state.PrintContext, "Print the CPU context when a stack trace is printed for the textual output modes")
-		->required(false);
-
-	// launch -t
-	print_timestamp = launch_command->add_flag("-t,--print-timestamp", state.PrintTimestamp, "Print a timestamp in front of each entry for the textual output modes")
-		->required(false);
-
-	// launch -s
-	auto search_path = launch_command->add_option("-s,--pdb-search-path", state.PdbSearchPath, "Set one or multiple search paths for PDB files")
-		->required(false)
-		->check(CLI::ExistingDirectory);
-
-	// launch -S
-	auto search_path_auto = launch_command->add_flag("-S,--self-search-path", state.PdbSearchSelf, "Add the module path as search path for PDB files")
-		->required(false);
-
-	// launch [program path]
-	auto path_option = launch_command->add_option("program", state.ProgramPath, "The path to the application to start and debug")
-		->required(true)
-		->check(CLI::ExistingFile);
-
-	// launch ... [arguments]
-	auto args_option = launch_command->add_option("arguments", state.Arguments, "The program parameters")
-		->required(false);
-
-	return launch_command;
+	// positional arguments 
+	command.add_option<std::string>(Cli::Descriptors::DESC_PROGPATH)->required(true)->check(CLI::ExistingFile);
+	command.add_option<std::vector<std::string>>(Cli::Descriptors::DESC_ARGUMENTS);
 }
 
 /// <summary>
@@ -434,49 +417,28 @@ CLI::App* create_launch_command(CLI::App& app, State& state, CLI::Option*& print
 /// <param name="state">The state obtained through processing program arguments through <see cref="CLI::App"/>.</param>
 /// <param name="print_context">A reference to a <see cref="CLI::Option"/> pointer that will receive the replay_print_context flag.</param>
 /// <param name="print_timestamp">A reference to a <see cref="CLI::Option"/> pointer that will receive the replay_print_timestamp flag.</param>
-/// <returns>A pointer to the resulting <see cref="CLI:App"/> instance for this subcommand.</returns>
-CLI::App* create_replay_command(CLI::App& app, State& state, CLI::Option*& replay_print_context, CLI::Option*& replay_print_timestamp) {
+void create_replay_command(Cli::HindsightCli& cli) {
 	// the replay command
-	auto replay_command = app.add_subcommand("replay", "Replay a previously recorded binary log file");
+	auto& command = cli.add_subcommand(Cli::Descriptors::NAME_SUBCOMMAND_REPLAY, Cli::Descriptors::DESC_SUBCOMMAND_REPLAY);
 
-	// replay -b 
-	auto replay_break_on_breakpoint = replay_command->add_flag("-b,--break-breakpoint", state.BreakOnBreakpoints, "Break on breakpoints")
-		->required(false);
+	// flags and options
+	command.add_flag(Cli::Descriptors::DESC_BREAKB);
+	command.add_flag(Cli::Descriptors::DESC_BREAKE);
+	command.add_flag(Cli::Descriptors::DESC_BREAKF)->needs(command.get_option(Cli::Descriptors::NAME_BREAKE));
+	command.add_flag(Cli::Descriptors::DESC_PRINTCTX);
+	command.add_flag(Cli::Descriptors::DESC_PRINTTIME);
 
-	// replay -e
-	auto replay_break_on_exceptions = replay_command->add_flag("-e,--break-exception", state.BreakOnExceptions, "Break on exceptions")
-		->required(false);
+	// this one is initialized directly due to the description relying on the EventFilterValidator entries
+	command.add_option<std::vector<std::string>>(
+		Cli::Descriptors::DESC_FILTER.Name,
+		Cli::Descriptors::DESC_FILTER.Flag,
+		Cli::Descriptors::DESC_FILTER.Desc + std::string(", options: ") + Hindsight::Cli::CliValidator::EventFilterValidator::GetValid()
+	)->check(Hindsight::Cli::CliValidator::EventFilterValidator::Validator);
 
-	// replay -f
-	auto replay_break_on_first_chance = replay_command->add_flag("-f,--first-chance", state.BreakOnFirstChanceOnly, "Only break on first-chance exceptions")
-		->needs(replay_break_on_exceptions)
-		->required(false);
+	command.add_flag(Cli::Descriptors::DESC_NOSANITY);
 
-	// replay -c 
-	replay_print_context = replay_command->add_flag("-c,--print-context", state.PrintContext, "Print the CPU context when a stack trace is printed for the textual output modes")
-		->required(false);
-
-	// replay -t
-	replay_print_timestamp = replay_command->add_flag("-t,--print-timestamp", state.PrintTimestamp, "Print a timestamp in front of each entry for the textual output modes")
-		->required(false);
-
-	auto replay_include = replay_command->add_option(
-		"-i,--include-only",
-		state.ReplayEventFilter,
-		"Specify a collection of events to include in the replay, options: " + Hindsight::CliValidator::EventFilterValidator::GetValid())
-		->required(false)
-		->check(Hindsight::CliValidator::EventFilterValidator::Validator);
-
-	// replay --no-sanity-check
-	auto replay_no_sanity_check = replay_command->add_flag("--no-sanity-check", state.NoSanityCheck, "Do not verify the checksum of the event data in the file")
-		->required(false);
-
-	// replay [binary log file path]
-	auto replay_path_option = replay_command->add_option("path", state.ReplayFile, "The path to the binary log file to replay")
-		->required(true)
-		->check(CLI::ExistingFile);
-
-	return replay_command;
+	// positionals
+	command.add_option<std::string>(Cli::Descriptors::DESC_BINPATH)->required(true)->check(CLI::ExistingFile);
 }
 
 /// <summary>
@@ -486,54 +448,20 @@ CLI::App* create_replay_command(CLI::App& app, State& state, CLI::Option*& repla
 /// <param name="state">The state obtained through processing program arguments through <see cref="CLI::App"/>.</param>
 /// <param name="print_context">A reference to a <see cref="CLI::Option"/> pointer that will receive the mortem_print_context flag.</param>
 /// <param name="print_timestamp">A reference to a <see cref="CLI::Option"/> pointer that will receive the mortem_print_timestamp flag.</param>
-/// <returns>A pointer to the resulting <see cref="CLI:App"/> instance for this subcommand.</returns>
-CLI::App* create_mortem_command(CLI::App& app, State& state, CLI::Option*& mortem_print_context, CLI::Option*& mortem_print_timestamp) {
-	auto mortem_command = app.add_subcommand("mortem", "The postmortem debugger, which can be registered and automatically invoked by the system");
+void create_mortem_command(Cli::HindsightCli& cli) {
+	auto& command = cli.add_subcommand(Cli::Descriptors::NAME_SUBCOMMAND_MORTEM, Cli::Descriptors::DESC_SUBCOMMAND_MORTEM);
 
-	// mortem -c 
-	mortem_print_context = mortem_command->add_flag("-c,--print-context", state.PrintContext, "Print the CPU context when a stack trace is printed for the textual output modes")
-		->required(false);
-
-	// mortem -t
-	mortem_print_timestamp = mortem_command->add_flag("-t,--print-timestamp", state.PrintTimestamp, "Print a timestamp in front of each entry for the textual output modes")
-		->required(false);
-
-	// launch -r #num
-	auto max_recursion = mortem_command->add_option("-r,--max-recursion", state.MaxRecursion, "Set the maximum number of recursive frames in a stack trace. Use 0 to set to unlimited")
-		->default_val("10")
-		->required(false);
-
-	// launch -i #num 
-	auto max_instruction = mortem_command->add_option("-i,--max-instruction", state.MaxInstruction, "Set the maximum number of instructions to include in a stack trace. Use 0 to disable")
-		->default_val("0")
-		->required(false);
-
-	// mortem -s
-	auto search_path = mortem_command->add_option("-s,--pdb-search-path", state.PdbSearchPath, "Set one or multiple search paths for PDB files")
-		->required(false)
-		->check(CLI::ExistingDirectory);
-
-	// mortem -S
-	auto search_path_auto = mortem_command->add_flag("-S,--self-search-path", state.PdbSearchSelf, "Add the module path as search path for PDB files")
-		->required(false);
-
-	// mortem -p
-	auto process_id = mortem_command->add_option("-p,--process-id", state.PostMortemProcessId, "The post-mortem target process ID")
-		->required(true);
-
-	// mortem -e
-	auto event_handle = mortem_command->add_option("-e,--event-handle", state.PostMortemEvent, "The post-mortem debug event handle")
-		->required(true);
-
-	// mortem -j
-	auto jit_debug = mortem_command->add_option("-j,--jit-debug-info", state.PostMortemJitDebugEventInfo, "The post-mortem JIT_DEBUG_INFO structure reference")
-		->required(true);
-
-	// mortem -n
-	auto notify = mortem_command->add_flag("-n,--notify", state.PostMortemNotify, "Notify the user after hindsight is ready processing the postmortem debug event")
-		->required(false);
-	
-	return mortem_command;
+	// flags and options
+	command.add_flag(Cli::Descriptors::DESC_PRINTCTX);
+	command.add_flag(Cli::Descriptors::DESC_PRINTTIME);
+	command.add_option<size_t>(Cli::Descriptors::DESC_MAX_RECURSION)->default_val("0");
+	command.add_option<size_t>(Cli::Descriptors::DESC_MAX_INSTRUCTION)->default_val("0");
+	command.add_option<std::vector<std::string>>(Cli::Descriptors::DESC_PDBSEARCH)->check(CLI::ExistingDirectory);
+	command.add_flag(Cli::Descriptors::DESC_PDBSELF);
+	command.add_option<DWORD>(Cli::Descriptors::DESC_JITPID)->required(true);
+	command.add_option<HANDLE>(Cli::Descriptors::DESC_JITEVENT)->required(true);
+	command.add_option<void*>(Cli::Descriptors::DESC_JITINFO)->required(true);
+	command.add_flag(Cli::Descriptors::DESC_JITNOTIFY);
 }
 
 /// <summary>
@@ -550,44 +478,38 @@ int main(int argc, char* argv[]) {
 	SendMessage(hWndConsole, WM_SETICON, ICON_SMALL,  reinterpret_cast<LPARAM>(hIcon));
 	SendMessage(hWndConsole, WM_SETICON, ICON_BIG,    reinterpret_cast<LPARAM>(hIcon));
 
-	State state;
-	CLI::Option *print_context, *print_timestamp, *replay_print_context, *replay_print_timestamp, *mortem_print_context, *mortem_print_timestamp;
+	Cli::HindsightCli cli("A portable hindsight debugger that is designed for detecting issues in software when it is already published.", "hindsight");
 
-	CLI::App app("A portable hindsight debugger that is designed for detecting issues in software when it is already published.", "hindsight");
-	app.require_subcommand();
-	app.set_help_all_flag("-H,--help-all", "Show help for all subcommands");
-	app.footer("note: use _NT_SYMBOL_PATH and _NT_ALT_SYMBOL_PATH environment variables to override default search paths for .pdb files.\r\n      launch --pdb-search-path can also be used to add multiple directories");
+	cli.command().require_subcommand();
+	cli.command().set_help_all_flag("-H,--help-all", "Show help for all subcommands");
+	cli.command().footer("note: use _NT_SYMBOL_PATH and _NT_ALT_SYMBOL_PATH environment variables to override default search paths for .pdb files.\r\n      launch --pdb-search-path can also be used to add multiple directories");
 
 	// add the PrintingDebuggerEventHandler for stdout?
-	auto standard_out = app.add_flag("-s,--stdout", state.StandardOut, "Indicate that the debugger should output to stdout")
-		->required(false);
+	cli.add_flag(Cli::Descriptors::DESC_STDOUT);
 
 	// add the PrintingDebuggerEventHandler for a file?
-	auto text_out = app.add_option("-l,--log", state.OutputTextFile, "Indicate that the debugger should output to log file")
-		->required(false);
+	cli.add_option<std::string>(Cli::Descriptors::DESC_LOGTEXT);
 
 	// add the WritingDebuggerEventHandler
-	auto bin_out = app.add_option("-w,--write-binary", state.OutputBinaryFile, "Indicate that the debugger should output to binary log file")
-		->required(false);
+	cli.add_option<std::string>(Cli::Descriptors::DESC_LOGBIN);
 
 	// disable colours
-	auto bland = app.add_flag("-b,--bland", state.Bland, "Disable colours in terminal output when --stdout was specified")
-		->needs(standard_out)
-		->required(false);
+	cli.add_flag(Cli::Descriptors::DESC_BLAND)
+		->needs(cli.get_option(Cli::Descriptors::NAME_STDOUT));
 
-	auto launch_command = create_launch_command(app, state, print_context, print_timestamp);
-	auto replay_command = create_replay_command(app, state, replay_print_context, replay_print_timestamp);
-	auto mortem_command = create_mortem_command(app, state, mortem_print_context, mortem_print_timestamp);
+	create_launch_command(cli);
+	create_replay_command(cli);
+	create_mortem_command(cli);
 
 	// hindsight --version
-	auto version_flag = app.add_flag("-v,--version", [&](size_t count) {
+	cli.add_flag(Cli::Descriptors::DESC_VERSION, [&](size_t count) {
 		std::cout << rang::style::reset << "hindsight " << get_version() << " " << hindsight_version_year_s << ", " << hindsight_author << std::endl;
 
-		if (Hindsight::_contributors.size() > 1) 
+		if (Hindsight::_contributors.size() > 1)
 			std::wcout << L"contributors: " << Utilities::String::Join(Hindsight::_contributors, L", ") << std::endl;
 
 		exit(0);
-	}, "Display the version of hindsight");
+	});
 
 	// make sure to reset the rang style on exit
 	std::atexit([]() {
@@ -595,49 +517,40 @@ int main(int argc, char* argv[]) {
 	});
 
 	try {
-		app.parse(argc, argv);
+		cli.command().parse(argc, argv);
 	} catch (const CLI::ParseError & e) {
 		std::cout << (e.get_exit_code() == 0 ? rang::fg::gray : rang::fg::red);
-		auto code = app.exit(e);
+		auto code = cli.command().exit(e);
 		std::cout << rang::style::reset;
 		return code;
 	}
 
-	state.TextFileOut   = *text_out;
-	state.BinaryFileOut = *bin_out;
-
-	auto textual_output = (*text_out || *standard_out);
+	auto textual_output = cli.anyset({ Cli::Descriptors::NAME_LOGTEXT, Cli::Descriptors::NAME_STDOUT });
 
 	// ensure the --print-context has a required option to specify where to print to
-	if ((*print_context || *replay_print_context || *mortem_print_context) && !textual_output) {
-		std::cout << rang::fgB::red << "error: cannot use --print-context without either --stdout or --log" << std::endl << rang::style::reset;
+	if (!textual_output && cli.subcommand_anyset({ Cli::Descriptors::NAME_SUBCOMMAND_LAUNCH, Cli::Descriptors::NAME_SUBCOMMAND_REPLAY }, { Cli::Descriptors::NAME_PRINTCTX, Cli::Descriptors::NAME_PRINTTIME })) {
+		std::cout << rang::fgB::red << "error: cannot use --print-context or --print-timestamp without either --stdout or --log" << std::endl << rang::style::reset;
 		return 1;
 	}
 
-	// ensure the --print-timestamp has a required option to specify where to print to 
-	if ((*print_timestamp || *replay_print_timestamp || *mortem_print_timestamp) && !textual_output) {
-		std::cout << rang::fgB::red << "error: cannot use --print-timestamp without either --stdout or --log" << std::endl << rang::style::reset;
-		return 1;
-	}
+	if (cli.is_subcommand_chosen(Cli::Descriptors::NAME_SUBCOMMAND_LAUNCH)) 
+		return LaunchCommand(cli);
 
-	if (launch_command->parsed()) 
-		return LaunchCommand(state);
+	if (cli.is_subcommand_chosen(Cli::Descriptors::NAME_SUBCOMMAND_REPLAY))
+		return ReplayCommand(cli);
 
-	if (replay_command->parsed())
-		return ReplayCommand(state);
-
-	if (mortem_command->parsed()) {
-		if (*standard_out) {
+	if (cli.is_subcommand_chosen(Cli::Descriptors::NAME_SUBCOMMAND_MORTEM)) {
+		if (cli.isset(Cli::Descriptors::NAME_STDOUT)) {
 			std::cout << rang::fgB::red << "error: cannot use --stdout in the post-mortem debug mode" << std::endl << rang::style::reset;
 			pause(close_window);
 			return 1;
-		} else if (!*text_out && !*bin_out) {
+		} else if (!cli.anyset({ Cli::Descriptors::NAME_LOGTEXT, Cli::Descriptors::NAME_LOGBIN })) {
 			std::cout << rang::fgB::red << "error: cannot use the mortem subcommand without a file-based output handler (such as -l or -w)" << std::endl << rang::style::reset;
 			pause(close_window);
 			return 1;
 		}
 
-		return MortemCommand(state);
+		return MortemCommand(cli);
 	}
 
 	return 0;

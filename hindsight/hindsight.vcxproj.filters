@@ -46,14 +46,26 @@
     <Filter Include="Source Files\BinaryLog">
       <UniqueIdentifier>{d0598cec-c0d0-47e4-8510-c79e34bf21ba}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\CliValidators">
-      <UniqueIdentifier>{dd4f87d3-4c60-4f26-9f07-fd74b4820de0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\CliValidators">
-      <UniqueIdentifier>{12e8e4d9-768e-477f-827d-cbc95be4771d}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\Checksum">
       <UniqueIdentifier>{8b03171a-6096-4e3c-80ad-5134500a0b7e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Cli">
+      <UniqueIdentifier>{63184603-ba5c-484c-85c2-b9c57ce3c9f8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Cli\CliValidators">
+      <UniqueIdentifier>{dd4f87d3-4c60-4f26-9f07-fd74b4820de0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Cli">
+      <UniqueIdentifier>{76dc7bfe-fa40-4faf-b754-d07646cdcc17}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Cli\CliValidators">
+      <UniqueIdentifier>{12e8e4d9-768e-477f-827d-cbc95be4771d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Debugger\CxxExceptions">
+      <UniqueIdentifier>{13da828c-cb36-48cc-aea4-015b255ab662}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Debugger\CxxExceptions">
+      <UniqueIdentifier>{be32bb60-2674-49cd-b1e4-f4581accef57}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -100,13 +112,13 @@
       <Filter>Source Files\BinaryLog</Filter>
     </ClCompile>
     <ClCompile Include="EventFilterValidator.cpp">
-      <Filter>Source Files\CliValidators</Filter>
+      <Filter>Source Files\Cli\CliValidators</Filter>
+    </ClCompile>
+    <ClCompile Include="ExceptionRtti.cpp">
+      <Filter>Source Files\Debugger\CxxExceptions</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CLI11.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="rang.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -143,9 +155,6 @@
     <ClInclude Include="DebugStackTrace.hpp">
       <Filter>Header Files\Debugger</Filter>
     </ClInclude>
-    <ClInclude Include="State.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PrintingDebuggerEventHandler.hpp">
       <Filter>Header Files\Debugger\EventHandler</Filter>
     </ClInclude>
@@ -165,13 +174,25 @@
       <Filter>Header Files\BinaryLog</Filter>
     </ClInclude>
     <ClInclude Include="EventFilterValidator.hpp">
-      <Filter>Header Files\CliValidators</Filter>
+      <Filter>Header Files\Cli\CliValidators</Filter>
     </ClInclude>
     <ClInclude Include="crc32.hpp">
       <Filter>Header Files\Checksum</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CLI11.hpp">
+      <Filter>Header Files\Cli</Filter>
+    </ClInclude>
+    <ClInclude Include="DynaCli.hpp">
+      <Filter>Header Files\Cli</Filter>
+    </ClInclude>
+    <ClInclude Include="ArgumentNames.hpp">
+      <Filter>Header Files\Cli</Filter>
+    </ClInclude>
+    <ClInclude Include="ExceptionRtti.hpp">
+      <Filter>Header Files\Debugger\CxxExceptions</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -181,6 +202,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\logo\hindsight.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\hindsight\logo\hindsight.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

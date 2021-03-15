@@ -21,8 +21,11 @@ namespace fs = std::filesystem;
 /// <param name="path">The path to a HIND file, the binary log format of hindsight.</param>
 /// <param name="state">The state obtained through processing program arguments through <see cref="CLI::App"/>.</param>
 /// <exception cref="std::runtime_error">This exception is thrown when the file cannot be opened or is not a valid binary log file.</exception>
-BinaryLogPlayer::BinaryLogPlayer(const std::string& path, const Hindsight::State& state)
-	: m_State(state), m_ShouldFilter(!state.ReplayEventFilter.empty()), m_Filter(state.ReplayEventFilter.begin(), state.ReplayEventFilter.end()), m_Crc32(0) {
+BinaryLogPlayer::BinaryLogPlayer(const std::string& path, const Cli::HindsightCli& state)
+	: m_State(state), m_SubState(state[state.get_chosen_subcommand_name()]),
+	  m_ShouldFilter(!m_SubState.get<std::vector<std::string>>(Cli::Descriptors::NAME_FILTER).empty()),
+	  m_Filter(m_SubState.get<std::vector<std::string>>(Cli::Descriptors::NAME_FILTER).begin(), m_SubState.get<std::vector<std::string>>(Cli::Descriptors::NAME_FILTER).end()),
+	  m_Crc32(0) {
 
 	m_Stream.open(path, std::ios::in | std::ios::binary);
 	if (!m_Stream.is_open())
@@ -32,14 +35,16 @@ BinaryLogPlayer::BinaryLogPlayer(const std::string& path, const Hindsight::State
 	Read(reinterpret_cast<char*>(&m_Header), sizeof(FileHeader), false);
 
 	uint32_t fileVersion     = m_Header.Version >> 16;
+	uint8_t  fileMajor       = fileVersion >> 8;
+	uint8_t  fileMinor       = fileVersion & 0xf;
 	uint32_t requiredVersion = hindsight_version_int >> 16;
 	uint8_t  requiredMajor   = requiredVersion >> 8;
 	uint8_t  requiredMinor   = requiredVersion & 0xf;
 
 	if (fileVersion != requiredVersion)
-		throw std::runtime_error("cannot open file, the version used to generate this log differs from the used version. Hindsight " + std::to_string(requiredMajor) + "." + std::to_string(requiredMinor) + " is required.");
+		throw std::runtime_error("cannot open file, the version used to generate this log differs from the used version. Hindsight " + std::to_string(fileMajor) + "." + std::to_string(fileMinor) + " is required and you are using " + std::to_string(requiredMajor) + "." + std::to_string(requiredMinor) + ".");
 
-	if (!state.NoSanityCheck)
+	if (!m_SubState.isset(Cli::Descriptors::NAME_NOSANITY))
 		CheckSanity();
 }
 
@@ -131,10 +136,10 @@ bool BinaryLogPlayer::Next() {
 	// read base frame and seek back, used to determine base event entry type.
 	EventEntry e;
 	Read(reinterpret_cast<char*>(&e), sizeof(EventEntry), false);
-	m_Stream.seekg(-(std::streamoff)sizeof(EventEntry), std::ios::cur);
+	m_Stream.seekg(-static_cast<std::streamoff>(sizeof(EventEntry)), std::ios::cur);
 
-	EntryFrame		frame;
-	DEBUG_EVENT		event;
+	EntryFrame  frame {};
+	DEBUG_EVENT event {};
 
 	event.dwDebugEventCode	= e.EventId;
 	event.dwProcessId		= e.ProcessInformation.dwProcessId;
@@ -195,9 +200,45 @@ void BinaryLogPlayer::EmitException(time_t time, const ExceptionEventEntry& fram
 	char signature[4] = { 0 };
 	std::shared_ptr<DebugContext> context;
 	std::shared_ptr<DebugStackTrace> trace;
+	std::shared_ptr<CxxExceptions::ExceptionRunTimeTypeInformation> ertti = nullptr;
 	StackTraceConcrete traceConcrete;
 	WOW64_CONTEXT ctx32;
 	CONTEXT ctx64;
+	
+	// read the run-time type information if present.
+	if (frame.HasRtti) {
+		uint32_t                    type_count = 0, path_length = 0, message_length = 0;
+		std::vector<std::string>    type_names;
+		std::optional<std::wstring> type_info_module_path;
+		std::optional<std::string>  exception_message;
+
+		// read the catchable type names
+		Read(type_count);
+		if (type_count != 0) {
+			type_names.reserve(type_count);
+
+			for (uint32_t i = 0; i < type_count; ++i)
+				Read(type_names.emplace_back());
+		}
+
+		// read the throw info source module path
+		Read(path_length);
+		if (path_length != 0) {
+			std::wstring value;
+			Read(value, static_cast<int64_t>(path_length));
+			type_info_module_path = value;
+		}
+
+		// read the exception message
+		Read(message_length);
+		if (message_length != 0) {
+			std::string value;
+			Read(value, static_cast<int64_t>(message_length));
+			exception_message = value;
+		}
+
+		ertti = std::make_shared<CxxExceptions::ExceptionRunTimeTypeInformation>(type_names, exception_message, type_info_module_path);
+	}
 
 	// get a PROCESS_INFORMATION struct from the frame
 	auto pi = static_cast<PROCESS_INFORMATION>(frame.ProcessInformation);
@@ -280,16 +321,17 @@ void BinaryLogPlayer::EmitException(time_t time, const ExceptionEventEntry& fram
 				name,
 				context,
 				trace,
-				m_Modules
+				m_Modules,
+				ertti
 			);
 	}
 
 	// handle breaking
 	if (frame.IsBreakpoint) {
-		if (m_State.BreakOnBreakpoints)
+		if (m_SubState.isset(Cli::Descriptors::NAME_BREAKB))
 			HandleBreakpointOptions();
 	} else {
-		if (m_State.BreakOnExceptions && (!m_State.BreakOnFirstChanceOnly || frame.IsFirstChance))
+		if (m_SubState.isset(Cli::Descriptors::NAME_BREAKE) && (!m_SubState.isset(Cli::Descriptors::NAME_BREAKF) || frame.IsFirstChance))
 			HandleBreakpointOptions();
 	}
 }
@@ -624,6 +666,11 @@ void BinaryLogPlayer::Read(std::string& result, int64_t size) {
 		size = readSize;
 	}
 
+	if (size == 0) {
+		result = "";
+		return;
+	}
+
 	result.resize(size);
 	Read(&result[0], size * sizeof(char));
 }
@@ -639,6 +686,11 @@ void BinaryLogPlayer::Read(std::wstring& result, int64_t size) {
 		uint32_t readSize;
 		Read(readSize);
 		size = readSize;
+	}
+
+	if (size == 0) {
+		result = L"";
+		return;
 	}
 
 	result.resize(size);

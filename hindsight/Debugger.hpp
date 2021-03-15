@@ -3,11 +3,14 @@
 #ifndef debugger_h
 #define debugger_h
 
-	#include "State.hpp"
+	#include "DynaCli.hpp"
+	#include "ArgumentNames.hpp"
 	#include "Process.hpp"
 	#include "DebuggerExceptions.hpp"
 	#include "ModuleCollection.hpp"
 	#include "IDebuggerEventHandler.hpp"
+	#include "ExceptionRtti.hpp"
+
 	#include <Windows.h>
 	#include <memory>
 	#include <vector>
@@ -46,7 +49,8 @@
 			/// </summary>
 			class Debugger {
 				private:
-					const Hindsight::State& m_State;					/* The hindsight program argument state. */
+					const Cli::HindsightCli& m_State;					/* The hindsight program argument state. */
+					const Cli::HindsightCli& m_SubState;				/* The launch substate */
 					std::shared_ptr<Process::Process> m_Process;		/* The debugged process. */
 					std::shared_ptr<JitDebuggerInfo> m_Jit = nullptr;	/* A shared pointer to JIT debug info for the postmortem mode */
 
@@ -62,7 +66,7 @@
 					/// </summary>
 					/// <param name="process">A shared pointer to a <see cref="Hindsight::Process::Process"/> instance containing information about the process to be debugged.</param>
 					/// <param name="state">The hindsight program argument state.</param>
-					Debugger(std::shared_ptr<Process::Process> process, const Hindsight::State& state);
+					Debugger(std::shared_ptr<Process::Process> process, const Cli::HindsightCli& state);
 
 					/// <summary>
 					/// Construct a new Debugger instance for postmortem (JIT) debugging.
@@ -71,7 +75,7 @@
 					/// <param name="state">The hindsight program argument state.</param>
 					/// <param name="jitEvent">The event handle copied into the hindsight process, so that WER can be signaled to let the debugged process continue.</param>
 					/// <param name="jit">An address in the debugged process address space pointing to a <see cref="JIT_DEBUG_INFO"/> instance.</param>
-					Debugger(std::shared_ptr<Process::Process> process, const Hindsight::State& state, HANDLE jitEvent, void* jit);
+					Debugger(std::shared_ptr<Process::Process> process, const Cli::HindsightCli& state, HANDLE jitEvent, void* jit);
 
 					/// <summary>
 					/// The Debugger destructor, which closes the process handles and detaches the debugger from it.
@@ -112,7 +116,8 @@
 					/// <param name="exception">A const reference to the normalized <see cref="EXCEPTION_DEBUG_INFO"/> struct.</param>
 					/// <param name="context">A shared pointer to the thread context where the exception was raised.</param>
 					/// <param name="trace">A shared pointer to the stack trace starting from the program counter address where the exception originated.</param>
-					void EmitJitException(std::shared_ptr<EventHandler::IDebuggerEventHandler> handler, const JIT_DEBUG_INFO& info, const EXCEPTION_DEBUG_INFO& exception, std::shared_ptr<DebugContext> context, std::shared_ptr<DebugStackTrace> trace);
+					/// <param name="ertti">A shared pointer to the run-time type information about the exception.</param>
+					void EmitJitException(std::shared_ptr<EventHandler::IDebuggerEventHandler> handler, const JIT_DEBUG_INFO& info, const EXCEPTION_DEBUG_INFO& exception, std::shared_ptr<DebugContext> context, std::shared_ptr<DebugStackTrace> trace, std::shared_ptr<CxxExceptions::ExceptionRunTimeTypeInformation> ertti);
 
 					/// <summary>
 					/// Wait for the next debug event and emit it to all the handlers.
