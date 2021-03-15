@@ -784,6 +784,7 @@ void PrintingDebuggerEventHandler::PrintContext(std::shared_ptr<const DebugConte
 /// <param name="classSignature">The class signature.</param>
 /// <param name="extends">True when this class extends a following class.</param>
 void PrintingDebuggerEventHandler::PrintClass(const std::string& classSignature, bool extends) const {
+	m_Stream << "\t";
 	for (size_t i = 0, l = classSignature.size(); i < l;) {
 		if (classSignature.substr(i, 6) == "class ") { // '[class ]a::b::c<char>::d'
 			rang_color(rang::fg::cyan) << "class ";

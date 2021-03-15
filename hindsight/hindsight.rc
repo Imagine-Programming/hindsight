@@ -25,8 +25,8 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,6,0,0
- PRODUCTVERSION 0,6,0,0
+ FILEVERSION 0,6,1,0
+ PRODUCTVERSION 0,6,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -43,12 +43,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Bas Groothedde / Imagine Programming"
             VALUE "FileDescription", "A portable on-site real-time and post-mortem debugger."
-            VALUE "FileVersion", "0.6.0.0alpha"
+            VALUE "FileVersion", "0.6.1.0alpha"
             VALUE "InternalName", "hindsigh.exe"
             VALUE "LegalCopyright", "Copyright (C) 2021 Bas Groothedde"
             VALUE "OriginalFilename", "hindsigh.exe"
             VALUE "ProductName", "hindsight"
-            VALUE "ProductVersion", "0.6.0.0alpha"
+            VALUE "ProductVersion", "0.6.1.0alpha"
         END
     END
     BLOCK "VarFileInfo"
