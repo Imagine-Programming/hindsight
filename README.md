@@ -64,6 +64,8 @@ Open an issue on GitHub or @ me, [@BGroothedde](https://twitter.com/BGroothedde)
 Simply clone and open the solution in Visual Studio. A compiled version of distorm is included, but building distorm is trivial as they ship a solution file with a static library configuration as well.
 
 ## Release History
+- **0.6.1.0alpha**:
+    - quick fix of RTTI information indentation.
 - **0.6.0.0alpha**:
     - complete rework of the CLI-argument logic by implementing DynaCli on top of [CLI11](https://github.com/CLIUtils/CLI11) like in [tiffconvert](https://github.com/Imagine-Programming/tiffconvert);
     - added RTTI for MSVC++ EH Exceptions (0xe06d7363) recording the type-chain of the catchable types, exception messages and throwing modules.
